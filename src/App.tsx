@@ -37,7 +37,7 @@ import { SoundMixerModal } from './components/SoundMixerModal';
 import { CurriculumMap } from './components/CurriculumMap';
 import { LevelIntroModal } from './components/LevelIntroModal';
 import { SONG_CATALOG, evaluateSongPerformance } from './utils/songData';
-import { isCalibrationOnboardingDone } from './utils/calibrationStorage';
+
 import {
   loadCurriculumProgress,
   saveLevelClear,
@@ -53,7 +53,7 @@ export const App: React.FC = () => {
   const [playMode, setPlayMode] = useState<AppPlayMode>('curriculum'); // 기본값: 10단계 모험 커리큘럼 모드
   const [showSplash, setShowSplash] = useState<boolean>(true); // 첫 실행 시 스플래시 인트로 화면 노출
   const [showDebug, setShowDebug] = useState(false);
-  const [showCalibrationModal, setShowCalibrationModal] = useState<boolean>(() => !isCalibrationOnboardingDone());
+  const [showCalibrationModal, setShowCalibrationModal] = useState<boolean>(false);
   const [showSoundMixerModal, setShowSoundMixerModal] = useState<boolean>(false);
   const [isSongModalDismissed, setIsSongModalDismissed] = useState(false);
 
@@ -772,10 +772,15 @@ export const App: React.FC = () => {
       {/* 시작/스플래시 화면 */}
       {showSplash && (
         <IntroSplashScreen
-          onStartPlay={() => setShowSplash(false)}
+          onStartPlay={() => {
+            setShowSplash(false);
+            // 사용자 명시적 제스처 시점에 마이크 시작 (브라우저 마이크 허용 팝업 트리거)
+            startListening().catch(() => {});
+          }}
           onOpenCalibration={() => {
             setShowSplash(false);
             setShowCalibrationModal(true);
+            startListening().catch(() => {});
           }}
         />
       )}

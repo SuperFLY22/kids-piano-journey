@@ -343,19 +343,28 @@ export function usePitchDetection(
   const startListening = useCallback(async () => {
     if (isListening || isInitializing) return;
 
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      const errMsg = '이 브라우저는 마이크 입력을 지원하지 않거나 HTTPS 환경이 아닙니다.';
+      setError(errMsg);
+      addLog(`❌ [마이크 에러] ${errMsg}`, -100, 0, null, false);
+      return;
+    }
+
     setIsInitializing(true);
     setError(null);
 
-    try {
-      const ctx = audioContextManager.getOrCreateMicContext();
-      if (!ctx) {
-        throw new Error('Web Audio API가 지원되지 않는 브라우저입니다.');
-      }
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
-      }
-      audioContextRef.current = ctx;
+    // 8초 이상 응답 없을 시 교착 방지용 타임아웃 가드
+    const timeoutId = window.setTimeout(() => {
+      setIsInitializing((prev) => {
+        if (prev) {
+          setError('마이크 응답 시간이 초과되었습니다. 마이크 권한을 확인해주세요.');
+        }
+        return false;
+      });
+    }, 8000);
 
+    try {
+      // 1. 브라우저 사용자 권한 팝업을 먼저 트리거하여 미디어 스트림 획득
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
@@ -365,6 +374,20 @@ export function usePitchDetection(
         },
       });
       mediaStreamRef.current = stream;
+
+      // 2. AudioContext 싱글톤 획득 및 활성화 (사용자 제스처 직후이므로 안전)
+      const ctx = audioContextManager.getOrCreateMicContext();
+      if (!ctx) {
+        throw new Error('Web Audio API가 지원되지 않는 브라우저입니다.');
+      }
+      if (ctx.state === 'suspended') {
+        // 비차단 또는 최대 1.5초 대기
+        await Promise.race([
+          ctx.resume(),
+          new Promise((resolve) => setTimeout(resolve, 1500)),
+        ]);
+      }
+      audioContextRef.current = ctx;
 
       const source = ctx.createMediaStreamSource(stream);
 
@@ -400,6 +423,7 @@ export function usePitchDetection(
       lpf.connect(analyser);
       analyserRef.current = analyser;
 
+      clearTimeout(timeoutId);
       setIsListening(true);
       setIsInitializing(false);
 
@@ -412,6 +436,7 @@ export function usePitchDetection(
       );
       runDetectionLoop();
     } catch (err: unknown) {
+      clearTimeout(timeoutId);
       cleanupAudio();
       setIsListening(false);
       setIsInitializing(false);
