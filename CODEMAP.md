@@ -284,4 +284,20 @@ graph TD
   - **세로 적층 문제 완전 차단**: `lg:grid-cols-12`(1024px) 대신 `md:grid-cols-12`(768px)를 적용하여 안드로이드 태블릿(800~960px 뷰포트)에서 하단부가 1열로 떨어져 오선지 아래가 짤리는 현상을 원천 방지.
 - **총 세로 높이 합산**: 약 410px ~ 430px (전체 태블릿 가로 화면에서 스크롤 0%의 완벽한 One-Screen 밸런스 달성).
 
+---
+
+## 7. Deployment & CI/CD Architecture (GitHub & Vercel)
+
+- **GitHub Repository**:
+  - URL: `https://github.com/SuperFLY22/kids-piano-journey`
+  - Default Branch: `main`
+- **Vercel Production Deployment**:
+  - Project ID: `prj_WKlrwhLQOUMSbt2qCWyBnMYP4lBt`
+  - Production URL: `https://kids-piano-journey.vercel.app`
+  - Secondary Alias: `https://kids-piano-journey-superfly22s-projects.vercel.app`
+  - Framework: Vite (`npm run build`, output: `dist`)
+- **Automated CI/CD**:
+  - `git push origin main` 발생 시 Vercel 자동 빌드 및 실시간 배포 연동 완료.
+
+
 
