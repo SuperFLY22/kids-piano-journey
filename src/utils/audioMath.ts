@@ -299,7 +299,10 @@ export function detectNoteOnset(
   nowTimestamp: number,
   config?: OnsetDetectionConfig
 ): boolean {
-  const minRiseDb = config?.minRiseDb ?? 4.5;
+  // 적응형 데시벨 상승폭 (Dynamic Adaptive Rise):
+  // 고음량(-18dB 초과) 구간에서는 마이크/스피커 다이내믹스 압축을 고려하여 3.8dB로 유연하게 보정
+  const defaultMinRise = currentDb > -18 ? 3.8 : 4.5;
+  const minRiseDb = config?.minRiseDb ?? defaultMinRise;
   const timeWindowMs = config?.timeWindowMs ?? 50;
   const minTimeDiffMs = config?.minTimeDiffMs ?? 15;
   const minRms = config?.minRms ?? 0.005;

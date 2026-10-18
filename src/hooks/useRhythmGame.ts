@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { SongMetadata, SheetNote, HitRating, RhythmGameState, RhythmPlayMode } from '../types/sheet';
+import { SongMetadata, SheetNote, HitRating, RhythmGameState, RhythmPlayMode, PlaybackSpeed } from '../types/sheet';
 import { AIRPLANE_SONG, beatToSeconds, secondsToBeat, evaluateTiming } from '../utils/songData';
 import { soundEffects } from '../utils/soundEffects';
 import { accompaniment } from '../utils/accompanimentEngine';
+import { audioContextManager } from '../utils/audioContextManager';
 
 export interface HitEvent {
   id: string;
@@ -21,7 +22,9 @@ function createInitialGameState(
   song: SongMetadata,
   isPlaying = false,
   playMode: RhythmPlayMode = 'practice',
-  isWaitingForInput = false
+  isWaitingForInput = false,
+  speed: PlaybackSpeed = 1.0,
+  countdown: number | 'GO' | null = null
 ): RhythmGameState {
   return {
     isPlaying,
@@ -29,7 +32,7 @@ function createInitialGameState(
     isCompleted: false,
     playMode,
     isWaitingForInput,
-    currentTimeSec: -2.0, // 2초 카운트다운 준비 기간
+    currentTimeSec: isPlaying ? -3.0 : 0, // 3초 카운트다운 준비 기간 (-3.0s ~ 0s)
     score: 0,
     combo: 0,
     maxCombo: 0,
@@ -37,6 +40,8 @@ function createInitialGameState(
     goodCount: 0,
     missCount: 0,
     activeTargetNote: song.notes[0] || null,
+    speed,
+    countdown,
   };
 }
 
@@ -52,15 +57,18 @@ export function useRhythmGame({
   const playModeRef = useRef<RhythmPlayMode>(initialPlayMode);
   const isWaitingForInputRef = useRef<boolean>(false);
 
+  // 연주 속도 (거북이 0.75배속 / 토끼 1.0배속)
+  const [speed, setSpeedState] = useState<PlaybackSpeed>(1.0);
+  const speedRef = useRef<PlaybackSpeed>(1.0);
+
   // 곡 음표 복사본 (판정 플래그 추적용)
   const [notes, setNotes] = useState<SheetNote[]>(() =>
     initialSong.notes.map((n) => ({ ...n, hit: false, rating: null }))
   );
 
   const [gameState, setGameState] = useState<RhythmGameState>(() =>
-    createInitialGameState(initialSong, false, initialPlayMode, false)
+    createInitialGameState(initialSong, false, initialPlayMode, false, 1.0, null)
   );
-
 
   const [lastHitEvent, setLastHitEvent] = useState<HitEvent | null>(null);
 
@@ -68,7 +76,7 @@ export function useRhythmGame({
   const [isMrMuted, setIsMrMuted] = useState<boolean>(() => accompaniment.getIsMuted());
 
   // 60fps 시간 추적용 Ref (React 렌더 사이클과 분리)
-  const timeRef = useRef<number>(-2.0);
+  const timeRef = useRef<number>(0);
   const isPlayingRef = useRef<boolean>(false);
   const notesRef = useRef<SheetNote[]>(notes);
   notesRef.current = notes;
@@ -85,6 +93,7 @@ export function useRhythmGame({
   const blankingUntilRef = useRef<number>(0);
   const hasCompletedRef = useRef<boolean>(false);
   const allProcessedTimeRef = useRef<number>(0);
+  const audioZeroTimeRef = useRef<number | null>(null);
 
   const onSongCompleteRef = useRef(onSongComplete);
   onSongCompleteRef.current = onSongComplete;
@@ -95,12 +104,28 @@ export function useRhythmGame({
   // 60fps 캔버스 직결용 초단위 실시간 시간 getter (React 리렌더링 유발 없음)
   const getCurrentTimeSec = useCallback(() => timeRef.current, []);
 
-  // 곡 총 재생 시간 (초) - useMemo로 currentSong 변경 시에만 재계산
+  // 곡 총 재생 시간 (초) - currentSong 및 speed 변경 시에만 재계산
   const { totalBeats, totalSongDurationSec } = useMemo(() => {
+    const curEffectiveBpm = Math.max(30, Math.round(currentSong.bpm * speed));
     const beats = currentSong.totalMeasures * currentSong.beatsPerMeasure;
-    const duration = beatToSeconds(beats, currentSong.bpm) + 1.5;
-    return { totalBeats: beats, totalSongDurationSec: duration };
-  }, [currentSong]);
+    const duration = beatToSeconds(beats, curEffectiveBpm) + 1.5;
+    return { totalBeats: beats, totalSongDurationSec: duration, effectiveBpm: curEffectiveBpm };
+  }, [currentSong, speed]);
+
+  // 속도 변경 (0.75x <-> 1.0x)
+  const setSpeed = useCallback((newSpeed: PlaybackSpeed) => {
+    speedRef.current = newSpeed;
+    setSpeedState(newSpeed);
+    setGameState((prev) => ({
+      ...prev,
+      speed: newSpeed,
+    }));
+  }, []);
+
+  const toggleSpeed = useCallback(() => {
+    const nextSpeed: PlaybackSpeed = speedRef.current === 1.0 ? 0.75 : 1.0;
+    setSpeed(nextSpeed);
+  }, [setSpeed]);
 
   // 모드 변경 (Practice <-> Play)
   const setPlayMode = useCallback((newMode: RhythmPlayMode) => {
@@ -127,7 +152,7 @@ export function useRhythmGame({
     const resetNotes = newSong.notes.map((n) => ({ ...n, hit: false, rating: null }));
     setNotes(resetNotes);
     notesRef.current = resetNotes;
-    timeRef.current = -2.0;
+    timeRef.current = autoStart ? -3.0 : 0;
     hasCompletedRef.current = false;
     allProcessedTimeRef.current = 0;
     isPlayingRef.current = autoStart;
@@ -136,13 +161,22 @@ export function useRhythmGame({
     lastCountdownStepRef.current = -1;
     lastActiveTargetIdRef.current = resetNotes[0]?.id || null;
     lastTimestampRef.current = performance.now();
+    audioZeroTimeRef.current = null;
 
     if (autoStart) {
       accompaniment.resume();
-      accompaniment.playCountdownTick(2);
     }
 
-    setGameState(createInitialGameState(newSong, autoStart, playModeRef.current, false));
+    setGameState(
+      createInitialGameState(
+        newSong,
+        autoStart,
+        playModeRef.current,
+        false,
+        speedRef.current,
+        autoStart ? 3 : null
+      )
+    );
     setLastHitEvent(null);
   }, []);
 
@@ -159,7 +193,7 @@ export function useRhythmGame({
     const resetNotes = targetSong.notes.map((n) => ({ ...n, hit: false, rating: null }));
     setNotes(resetNotes);
     notesRef.current = resetNotes;
-    timeRef.current = -2.0;
+    timeRef.current = -3.0; // 3초 카운트다운 시작 (-3.0s -> gameLoop에서 3 카운트 틱 자동 트리거)
     hasCompletedRef.current = false;
     allProcessedTimeRef.current = 0;
     isPlayingRef.current = true;
@@ -168,11 +202,18 @@ export function useRhythmGame({
     lastCountdownStepRef.current = -1;
     lastTimestampRef.current = performance.now();
     lastActiveTargetIdRef.current = resetNotes[0]?.id || null;
+    audioZeroTimeRef.current = null;
 
-    // 시작 즉시 1차 안내 틱 재생 (소리 출력 보장)
-    accompaniment.playCountdownTick(2);
-
-    setGameState(createInitialGameState(targetSong, true, playModeRef.current, false));
+    setGameState(
+      createInitialGameState(
+        targetSong,
+        true,
+        playModeRef.current,
+        false,
+        speedRef.current,
+        3
+      )
+    );
     setLastHitEvent(null);
   }, []);
 
@@ -201,12 +242,22 @@ export function useRhythmGame({
     const resetNotes = currentSong.notes.map((n) => ({ ...n, hit: false, rating: null }));
     setNotes(resetNotes);
     notesRef.current = resetNotes;
-    timeRef.current = -2.0;
+    timeRef.current = 0;
     lastTriggeredBeatRef.current = -999;
     lastCountdownStepRef.current = -1;
 
-    setGameState(createInitialGameState(currentSong, false, playModeRef.current, false));
+    setGameState(
+      createInitialGameState(
+        currentSong,
+        false,
+        playModeRef.current,
+        false,
+        speedRef.current,
+        null
+      )
+    );
   }, [currentSong]);
+
 
 
   // 반주 음소거 토글
@@ -221,12 +272,16 @@ export function useRhythmGame({
     (inputPitch: string | null) => {
       if (!inputPitch || !isPlayingRef.current) return;
 
+      // 카운트다운 진행 중(-0.2s 이전)에는 타깃 판정 보류 (준비 시간 보호)
+      if (timeRef.current < -0.2) return;
+
       // 효과음(딩동댕) 재생 중 마이크 역유입 블랭킹 가드 (250ms 무시)
       if (performance.now() < blankingUntilRef.current) return;
 
-      const curTime = timeRef.current;
+      const curTime = Math.max(0, timeRef.current);
       const currentNotes = notesRef.current;
       const song = currentSongRef.current;
+      const curEffectiveBpm = Math.max(30, Math.round(song.bpm * speedRef.current));
       const isPractice = playModeRef.current === 'practice';
 
       // 타깃 후보군 탐색
@@ -239,7 +294,7 @@ export function useRhythmGame({
         const firstUnprocessedIndex = currentNotes.findIndex((n) => !n.hit);
         if (firstUnprocessedIndex !== -1) {
           const note = currentNotes[firstUnprocessedIndex];
-          const noteTargetSec = beatToSeconds(note.beat, song.bpm);
+          const noteTargetSec = beatToSeconds(note.beat, curEffectiveBpm);
           const diff = curTime - noteTargetSec;
           // 대기 중이거나, 타깃선 도달 0.35초 전부터 허용
           if (isWaitingForInputRef.current || diff >= -0.35) {
@@ -252,7 +307,7 @@ export function useRhythmGame({
           const note = currentNotes[i];
           if (note.hit) continue;
 
-          const noteTargetSec = beatToSeconds(note.beat, song.bpm);
+          const noteTargetSec = beatToSeconds(note.beat, curEffectiveBpm);
           const diff = curTime - noteTargetSec;
 
           if (Math.abs(diff) <= 0.45 && Math.abs(diff) < minDiff) {
@@ -268,7 +323,7 @@ export function useRhythmGame({
 
       // 피치 일치 여부 판정
       if (targetNote.pitch === inputPitch) {
-        const noteTargetSec = beatToSeconds(targetNote.beat, song.bpm);
+        const noteTargetSec = beatToSeconds(targetNote.beat, curEffectiveBpm);
         const timeDiffSec = curTime - noteTargetSec;
         // 연습 모드에서는 맞추기만 하면 항상 'PERFECT', 실전 모드에서는 타이밍 평가
         const rating: HitRating = isPractice ? 'PERFECT' : evaluateTiming(timeDiffSec);
@@ -323,6 +378,7 @@ export function useRhythmGame({
     []
   );
 
+
   // 상시 가동 60fps 애니메이션 프레임 루프 (루프 단절 방지 & 끊김 없는 MR 스케줄링)
   useEffect(() => {
     let animId: number;
@@ -334,14 +390,15 @@ export function useRhythmGame({
       if (isPlayingRef.current) {
         const song = currentSongRef.current;
         const currentNotes = notesRef.current;
+        const curEffectiveBpm = Math.max(30, Math.round(song.bpm * speedRef.current));
         const isPractice = playModeRef.current === 'practice';
         const nextActiveNote = currentNotes.find((n) => !n.hit) || null;
 
         // 연습 모드 대기 판정:
-        // 카운트다운(-2s ~ 0s)이 끝난 후, 다음 쳐야 할 타깃 노트가 타깃 판정선에 도달했는가?
+        // 카운트다운(curTime >= 0s)이 끝난 후, 다음 쳐야 할 타깃 노트가 타깃 판정선에 도달했는가?
         let shouldHoldForPractice = false;
         if (isPractice && nextActiveNote && timeRef.current >= 0) {
-          const targetSec = beatToSeconds(nextActiveNote.beat, song.bpm);
+          const targetSec = beatToSeconds(nextActiveNote.beat, curEffectiveBpm);
           if (timeRef.current >= targetSec) {
             shouldHoldForPractice = true;
             timeRef.current = targetSec; // 타깃선에 정확히 일시정지 고정
@@ -352,32 +409,58 @@ export function useRhythmGame({
         // 스크롤 시간 전진 (연습 모드에서 대기 중이 아닐 때만 dt 가산)
         if (!shouldHoldForPractice) {
           timeRef.current += dt;
-          if (isPractice) {
+          if (isPractice && timeRef.current >= 0) {
             isWaitingForInputRef.current = false;
+          }
+
+          // [Phase C]: 실전 모드('play')에서 Web Audio API 오디오 클럭과의 드리프트 자동 댐핑 수렴
+          if (!isPractice && timeRef.current >= 0) {
+            const ctx = audioContextManager.getContext();
+            if (ctx && ctx.state === 'running') {
+              if (audioZeroTimeRef.current === null) {
+                audioZeroTimeRef.current = ctx.currentTime;
+              } else {
+                const expectedAudioTime = (ctx.currentTime - audioZeroTimeRef.current) * speedRef.current;
+                const drift = expectedAudioTime - timeRef.current;
+                if (Math.abs(drift) > 0.04 && Math.abs(drift) < 0.5) {
+                  timeRef.current += drift * 0.05;
+                }
+              }
+            }
           }
         }
         const curTime = timeRef.current;
 
-        // 1. 카운트다운 기간(-2.0s ~ 0.0s): 시작 시 '딱! 딱!' 메트로놈 카운트다운 사운드
+        // 1. 카운트다운 기간(-3.0s ~ 0.6s): 시작 시 3, 2, 1 틱 및 0: 출발! 스타트 사운드
+        let currentCountdown: number | 'GO' | null = null;
         if (curTime < 0) {
-          const countdownStep = Math.ceil(Math.abs(curTime)); // 2, 1
+          const countdownStep = Math.min(3, Math.max(1, Math.ceil(Math.abs(curTime))));
+          currentCountdown = countdownStep;
           if (countdownStep !== lastCountdownStepRef.current) {
             lastCountdownStepRef.current = countdownStep;
             accompaniment.playCountdownTick(countdownStep);
           }
+        } else if (curTime >= 0 && curTime < 0.6) {
+          currentCountdown = 'GO';
+          if (lastCountdownStepRef.current !== 0) {
+            lastCountdownStepRef.current = 0;
+            accompaniment.playCountdownTick(0);
+          }
+        } else {
+          currentCountdown = null;
         }
 
         // 2. 본 연주 기간(curTime >= 0): 4/4박자마다 MR 배경 반주
         // (단, 연습 모드에서 건반 대기 중에는 박자가 혼자 진행되지 않도록 정지)
         if (curTime >= 0 && !shouldHoldForPractice) {
-          const currentBeat = Math.floor(secondsToBeat(curTime, song.bpm));
+          const currentBeat = Math.floor(secondsToBeat(curTime, curEffectiveBpm));
           if (
             currentBeat >= 0 &&
             currentBeat < totalBeats &&
             currentBeat !== lastTriggeredBeatRef.current
           ) {
             lastTriggeredBeatRef.current = currentBeat;
-            accompaniment.playBeat(currentBeat, song.id);
+            accompaniment.playBeat(currentBeat, song.id, song.accompanimentChords);
           }
         }
 
@@ -385,11 +468,11 @@ export function useRhythmGame({
         let stateChanged = false;
         const updatedNotes = [...currentNotes];
 
-        if (!isPractice) {
+        if (!isPractice && curTime >= 0) {
           for (let i = 0; i < updatedNotes.length; i++) {
             const note = updatedNotes[i];
             if (!note.hit) {
-              const noteTargetSec = beatToSeconds(note.beat, song.bpm);
+              const noteTargetSec = beatToSeconds(note.beat, curEffectiveBpm);
               if (curTime - noteTargetSec > 0.45) {
                 updatedNotes[i] = {
                   ...note,
@@ -418,11 +501,17 @@ export function useRhythmGame({
           lastActiveTargetIdRef.current = nextActiveNote?.id || null;
         }
 
-        // 5. React State 동기화: 100ms 스로틀 또는 대기/타깃/MISS 변경 시 제한 갱신 (60fps 과도 리렌더링 차단)
+        // 5. React State 동기화: 100ms 스로틀 또는 대기/타깃/MISS/카운트다운 변경 시 제한 갱신
         const isWaiting = isWaitingForInputRef.current;
         const waitStatusChanged = isWaiting !== gameStateRef.current.isWaitingForInput;
+        const countdownChanged = currentCountdown !== gameStateRef.current.countdown;
         const shouldSyncUi =
-          now - lastUiSyncRef.current >= 100 || targetChanged || stateChanged || waitStatusChanged;
+          now - lastUiSyncRef.current >= 100 ||
+          targetChanged ||
+          stateChanged ||
+          waitStatusChanged ||
+          countdownChanged;
+
         if (shouldSyncUi) {
           lastUiSyncRef.current = now;
           setGameState((prev) => ({
@@ -431,6 +520,8 @@ export function useRhythmGame({
             activeTargetNote: nextActiveNote,
             isWaitingForInput: isWaiting,
             playMode: playModeRef.current,
+            speed: speedRef.current,
+            countdown: currentCountdown,
           }));
         }
 
@@ -444,7 +535,7 @@ export function useRhythmGame({
 
         const lastNote = song.notes[song.notes.length - 1];
         const lastNoteTargetSec = lastNote
-          ? beatToSeconds(lastNote.beat + (lastNote.duration || 1), song.bpm)
+          ? beatToSeconds(lastNote.beat + (lastNote.duration || 1), curEffectiveBpm)
           : totalSongDurationSec;
 
         // 연습(Wait) 모드: 마지막 음표 타건 후 0.4초 뒤 즉시 완곡 팡파르 & 결과 팝업 노출 (답답함 해소)
@@ -466,6 +557,7 @@ export function useRhythmGame({
             isPlaying: false,
             isCompleted: true,
             isWaitingForInput: false,
+            countdown: null,
           }));
           soundEffects.playFanfare();
           if (onSongCompleteRef.current) {
@@ -473,6 +565,7 @@ export function useRhythmGame({
           }
         }
       }
+
 
       animId = requestAnimationFrame(gameLoop);
     };
@@ -503,6 +596,9 @@ export function useRhythmGame({
     resumeGame,
     restartGame,
     stopGame,
+    speed,
+    setSpeed,
+    toggleSpeed,
     handleNoteInput,
   };
 }

@@ -40,9 +40,12 @@ export interface SongMetadata {
   icon?: string;
   themeColor?: string;
   notes: SheetNote[];
+  /** [Phase 7 & Refactor] 8마디 코드 진행표 (마디당 4박) */
+  accompanimentChords?: Array<'C' | 'G7'>;
 }
 
 export type RhythmPlayMode = 'practice' | 'play';
+export type PlaybackSpeed = 0.75 | 1.0;
 
 export interface RhythmGameState {
   isPlaying: boolean;
@@ -58,6 +61,8 @@ export interface RhythmGameState {
   goodCount: number;
   missCount: number;
   activeTargetNote: SheetNote | null;
+  speed?: PlaybackSpeed;
+  countdown?: number | 'GO' | null;
 }
 
 

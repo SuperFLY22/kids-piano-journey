@@ -5,6 +5,11 @@
 import { LevelProgress } from '../types/curriculum';
 
 export const CURRICULUM_STORAGE_KEY = 'kids_piano_curriculum_progress';
+export const CURRICULUM_SCHEMA_VERSION = 1;
+
+interface StoredCurriculumPayload extends LevelProgress {
+  schemaVersion?: number;
+}
 
 function getDefaultProgress(): LevelProgress {
   return {
@@ -14,7 +19,7 @@ function getDefaultProgress(): LevelProgress {
 }
 
 /**
- * 저장된 커리큘럼 진행도를 로드합니다.
+ * 저장된 커리큘럼 진행도를 로드합니다 (스키마 마이그레이션 보장).
  */
 export function loadCurriculumProgress(): LevelProgress {
   if (typeof window === 'undefined' && typeof globalThis.localStorage === 'undefined') {
@@ -28,10 +33,20 @@ export function loadCurriculumProgress(): LevelProgress {
     if (!raw) {
       return getDefaultProgress();
     }
-    const parsed = JSON.parse(raw) as LevelProgress;
+    const parsed = JSON.parse(raw) as StoredCurriculumPayload;
+    
+    // 유효하지 않은 데이터이거나 음수 레벨인 경우 자동 복구
+    const unlockedLevel = typeof parsed.unlockedLevel === 'number'
+      ? Math.max(1, Math.min(10, Math.floor(parsed.unlockedLevel)))
+      : 1;
+
+    const levelScores = (parsed.levelScores && typeof parsed.levelScores === 'object')
+      ? parsed.levelScores
+      : {};
+
     return {
-      unlockedLevel: Math.max(1, Math.min(10, parsed.unlockedLevel || 1)),
-      levelScores: parsed.levelScores || {},
+      unlockedLevel,
+      levelScores,
     };
   } catch (err) {
     console.error('Failed to load curriculum progress:', err);
@@ -68,7 +83,11 @@ export function saveLevelClear(
   const storage = typeof window !== 'undefined' ? window.localStorage : globalThis.localStorage;
   if (storage) {
     try {
-      storage.setItem(CURRICULUM_STORAGE_KEY, JSON.stringify(current));
+      const payload: StoredCurriculumPayload = {
+        ...current,
+        schemaVersion: CURRICULUM_SCHEMA_VERSION,
+      };
+      storage.setItem(CURRICULUM_STORAGE_KEY, JSON.stringify(payload));
     } catch (err) {
       console.error('Failed to save curriculum progress:', err);
     }

@@ -3,26 +3,35 @@
  * 스테이지 선택 시 손가락 위치 및 연주 팁, 목표 건반을 미리 보여주고 연습 모드로 시작
  */
 
-import React from 'react';
-import { Play, Sparkles, X, Music, CheckCircle2, Hand } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Play, Sparkles, X, Music, CheckCircle2, Hand, Gauge } from 'lucide-react';
 import { CurriculumLevel } from '../types/curriculum';
 import { NOTE_META_MAP } from '../utils/songParser';
-import { NotePitch } from '../types/sheet';
+import { NotePitch, PlaybackSpeed } from '../types/sheet';
 
 interface LevelIntroModalProps {
   level: CurriculumLevel | null;
   isOpen: boolean;
+  initialSpeed?: PlaybackSpeed;
   onClose: () => void;
-  onStartPractice: (level: CurriculumLevel) => void;
+  onStartPractice: (level: CurriculumLevel, speed?: PlaybackSpeed) => void;
 }
 
 export const LevelIntroModal: React.FC<LevelIntroModalProps> = ({
   level,
   isOpen,
+  initialSpeed = 1.0,
   onClose,
   onStartPractice,
 }) => {
+  const [selectedSpeed, setSelectedSpeed] = useState<PlaybackSpeed>(initialSpeed);
+
+  useEffect(() => {
+    setSelectedSpeed(initialSpeed);
+  }, [initialSpeed, isOpen]);
+
   if (!isOpen || !level) return null;
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in select-none">
@@ -111,11 +120,43 @@ export const LevelIntroModal: React.FC<LevelIntroModalProps> = ({
           </div>
         </div>
 
+        {/* Phase 9: 연주 속도 선택 프리셋 (거북이 vs 토끼) */}
+        <div className="flex items-center justify-between bg-slate-800/90 rounded-2xl p-2.5 sm:p-3 border border-white/10 mb-5">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
+            <Gauge className="w-3.5 h-3.5 text-amber-300" />
+            <span>연주 속도:</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedSpeed(0.75)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 active:scale-95 ${
+                selectedSpeed === 0.75
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-md ring-2 ring-amber-300'
+                  : 'bg-white/10 text-slate-300 hover:text-white hover:bg-white/15'
+              }`}
+            >
+              <span>🐢 거북이 (0.75x)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSpeed(1.0)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 active:scale-95 ${
+                selectedSpeed === 1.0
+                  ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-md ring-2 ring-sky-300'
+                  : 'bg-white/10 text-slate-300 hover:text-white hover:bg-white/15'
+              }`}
+            >
+              <span>🐰 토끼 (1.0x)</span>
+            </button>
+          </div>
+        </div>
+
         {/* 시작 버튼 그룹 */}
         <div className="flex flex-col sm:flex-row gap-2.5">
           <button
             type="button"
-            onClick={() => onStartPractice(level)}
+            onClick={() => onStartPractice(level, selectedSpeed)}
             className="flex-1 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 text-slate-950 font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-teal-500/30 active:scale-95 transition cursor-pointer"
           >
             <Play className="w-4 h-4 fill-current" />
@@ -134,3 +175,4 @@ export const LevelIntroModal: React.FC<LevelIntroModalProps> = ({
     </div>
   );
 };
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Mic,
   MicOff,
@@ -9,35 +9,35 @@ import {
   Volume2,
   Map as MapIcon,
   Music,
-  ArrowLeft,
-  RotateCcw,
 } from 'lucide-react';
 import { usePitchDetection } from './hooks/usePitchDetection';
 import { useKeyboardSimulation } from './hooks/useKeyboardSimulation';
 import { useFingerTutorial } from './hooks/useFingerTutorial';
 import { useRhythmGame } from './hooks/useRhythmGame';
-import { PitchCard } from './components/PitchCard';
+
+// 4대 모드 분리 뷰
+import { AdventureModeView } from './views/AdventureModeView';
+import { SongPlayModeView } from './views/SongPlayModeView';
+import { TutorialModeView } from './views/TutorialModeView';
+import { FreePlayModeView } from './views/FreePlayModeView';
+
+// 공통 모달 및 이펙트
 import { PitchMonitor } from './components/PitchMonitor';
-import { NoiseGateControl } from './components/NoiseGateControl';
-import { PianoRangeTester } from './components/PianoRangeTester';
-import { VirtualPiano } from './components/VirtualPiano';
 import { AudioLogViewer } from './components/AudioLogViewer';
-import { TutorialGuide } from './components/TutorialGuide';
 import { TutorialCompletionModal } from './components/TutorialCompletionModal';
-import { SheetMusicCanvas } from './components/SheetMusicCanvas';
-import { SongPlayHeader } from './components/SongPlayHeader';
-import { SongSelectionCardList } from './components/SongSelectionCardList';
 import { SongCompletionModal } from './components/SongCompletionModal';
-import { SongModeSoundMonitor } from './components/SongModeSoundMonitor';
 import { ConfettiEffect } from './components/ConfettiEffect';
 import { PianoCalibrationModal } from './components/PianoCalibrationModal';
 import { IntroSplashScreen } from './components/IntroSplashScreen';
 import { ComboFireworkOverlay } from './components/ComboFireworkOverlay';
 import { SoundMixerModal } from './components/SoundMixerModal';
-import { CurriculumMap } from './components/CurriculumMap';
 import { LevelIntroModal } from './components/LevelIntroModal';
-import { SONG_CATALOG, evaluateSongPerformance } from './utils/songData';
+import { StickerBookModal } from './components/StickerBookModal';
 
+import { SongMetadata, PlaybackSpeed } from './types/sheet';
+import { RewardSticker } from './types/sticker';
+import { evaluateSongPerformance, SONG_CATALOG } from './utils/songData';
+import { checkAndUnlockLevelSticker, checkAndUnlockSongSticker } from './utils/stickerStorage';
 import {
   loadCurriculumProgress,
   saveLevelClear,
@@ -46,28 +46,29 @@ import {
 import { getCurriculumLevel } from './utils/curriculumData';
 import { CurriculumLevel, LevelProgress } from './types/curriculum';
 import { KeepAwake } from '@capacitor-community/keep-awake';
+import { App as CapApp } from '@capacitor/app';
 
 export type AppPlayMode = 'curriculum' | 'song' | 'tutorial' | 'free';
 
 export const App: React.FC = () => {
-  const [playMode, setPlayMode] = useState<AppPlayMode>('curriculum'); // 기본값: 10단계 모험 커리큘럼 모드
-  const [showSplash, setShowSplash] = useState<boolean>(true); // 첫 실행 시 스플래시 인트로 화면 노출
+  const [playMode, setPlayMode] = useState<AppPlayMode>('curriculum');
+  const [showSplash, setShowSplash] = useState<boolean>(true);
   const [showDebug, setShowDebug] = useState(false);
   const [showCalibrationModal, setShowCalibrationModal] = useState<boolean>(false);
   const [showSoundMixerModal, setShowSoundMixerModal] = useState<boolean>(false);
+  const [showStickerBookModal, setShowStickerBookModal] = useState<boolean>(false);
+  const [newlyUnlockedSticker, setNewlyUnlockedSticker] = useState<RewardSticker | null>(null);
   const [isSongModalDismissed, setIsSongModalDismissed] = useState(false);
 
-  // Phase 8: 10단계 모험 커리큘럼 상태
+  // 10단계 모험 커리큘럼 상태
   const [curriculumProgress, setCurriculumProgress] = useState<LevelProgress>(() => loadCurriculumProgress());
   const [selectedLevelForIntro, setSelectedLevelForIntro] = useState<CurriculumLevel | null>(null);
   const [activeCurriculumLevel, setActiveCurriculumLevel] = useState<CurriculumLevel | null>(null);
   const [isCurriculumPlaying, setIsCurriculumPlaying] = useState<boolean>(false);
 
-  // 안드로이드 태블릿 및 모바일 화면 꺼짐 방지
+  // 화면 꺼짐 방지
   useEffect(() => {
-    KeepAwake.keepAwake().catch(() => {
-      // 일반 브라우저 환경에서는 무시
-    });
+    KeepAwake.keepAwake().catch(() => {});
     return () => {
       KeepAwake.allowSleep().catch(() => {});
     };
@@ -90,22 +91,34 @@ export const App: React.FC = () => {
     reloadCalibrationProfile,
   } = usePitchDetection();
 
-  // Phase 3: 오른손 5손가락 자리 튜토리얼 훅
   const tutorial = useFingerTutorial();
+  // 동요 자유 연주 전용 리듬 게임 훅 (SONG_CATALOG 동요 5곡 독립 상태 격리)
+  const songRhythmGame = useRhythmGame({
+    initialSong: SONG_CATALOG[0],
+    initialPlayMode: 'practice',
+  });
 
-  // Phase 4: 가로 스크롤 오선보 리듬 게임 훅
-  const rhythmGame = useRhythmGame();
+  // 10단계 모험 커리큘럼 전용 리듬 게임 훅 (커리큘럼 단계별 연습곡 독립 격리)
+  const curriculumRhythmGame = useRhythmGame({
+    initialSong: getCurriculumLevel(1)?.songData || SONG_CATALOG[0],
+    initialPlayMode: 'practice',
+  });
 
-  // 렌더 사이클 의존성 분리를 위한 Ref
+  // 렌더 사이클 의존성 분리를 위한 Refs
   const tutorialHandleNoteInputRef = useRef(tutorial.handleNoteInput);
   tutorialHandleNoteInputRef.current = tutorial.handleNoteInput;
   const tutorialIsActiveRef = useRef(tutorial.isActive);
   tutorialIsActiveRef.current = tutorial.isActive;
 
-  const rhythmGameHandleNoteInputRef = useRef(rhythmGame.handleNoteInput);
-  rhythmGameHandleNoteInputRef.current = rhythmGame.handleNoteInput;
-  const rhythmGameIsPlayingRef = useRef(rhythmGame.gameState.isPlaying);
-  rhythmGameIsPlayingRef.current = rhythmGame.gameState.isPlaying;
+  const songGameHandleNoteInputRef = useRef(songRhythmGame.handleNoteInput);
+  songGameHandleNoteInputRef.current = songRhythmGame.handleNoteInput;
+  const songGameIsPlayingRef = useRef(songRhythmGame.gameState.isPlaying);
+  songGameIsPlayingRef.current = songRhythmGame.gameState.isPlaying;
+
+  const curriculumGameHandleNoteInputRef = useRef(curriculumRhythmGame.handleNoteInput);
+  curriculumGameHandleNoteInputRef.current = curriculumRhythmGame.handleNoteInput;
+  const curriculumGameIsPlayingRef = useRef(curriculumRhythmGame.gameState.isPlaying);
+  curriculumGameIsPlayingRef.current = curriculumRhythmGame.gameState.isPlaying;
 
   const playModeRef = useRef(playMode);
   playModeRef.current = playMode;
@@ -113,56 +126,66 @@ export const App: React.FC = () => {
   isCurriculumPlayingRef.current = isCurriculumPlaying;
 
   // 건반 클릭 또는 키보드 시뮬레이션 시 입력 디스패치
-  const handleKeyOrSimulate = (fullName: string | null) => {
+  const handleKeyOrSimulate = useCallback((fullName: string | null) => {
     simulateNote(fullName);
     if (!fullName) return;
 
     const currentMode = playModeRef.current;
     if (currentMode === 'tutorial' && tutorialIsActiveRef.current) {
       tutorialHandleNoteInputRef.current(fullName);
+    } else if (currentMode === 'song' && songGameIsPlayingRef.current) {
+      songGameHandleNoteInputRef.current(fullName);
     } else if (
-      (currentMode === 'song' || (currentMode === 'curriculum' && isCurriculumPlayingRef.current)) &&
-      rhythmGameIsPlayingRef.current
+      currentMode === 'curriculum' &&
+      isCurriculumPlayingRef.current &&
+      curriculumGameIsPlayingRef.current
     ) {
-      rhythmGameHandleNoteInputRef.current(fullName);
+      curriculumGameHandleNoteInputRef.current(fullName);
     }
-  };
+  }, [simulateNote]);
 
-  // Mac 키보드(KeyA~G, 1~5, 한글 자음) 피아노 타건 시뮬레이션 연동
   useKeyboardSimulation(handleKeyOrSimulate);
 
-  // 마이크 피치 감지 시 현재 모드별 판정 자동 연동 (모드 전환 시 이전 음표 재트리거 방지)
+  // 마이크 피치 감지 시 현재 모드별 판정 자동 연동
   useEffect(() => {
     if (!confirmedNote) return;
 
     const currentMode = playModeRef.current;
     if (currentMode === 'tutorial' && tutorialIsActiveRef.current) {
       tutorialHandleNoteInputRef.current(confirmedNote);
+    } else if (currentMode === 'song' && songGameIsPlayingRef.current) {
+      songGameHandleNoteInputRef.current(confirmedNote.fullName);
     } else if (
-      (currentMode === 'song' || (currentMode === 'curriculum' && isCurriculumPlayingRef.current)) &&
-      rhythmGameIsPlayingRef.current
+      currentMode === 'curriculum' &&
+      isCurriculumPlayingRef.current &&
+      curriculumGameIsPlayingRef.current
     ) {
-      rhythmGameHandleNoteInputRef.current(confirmedNote.fullName);
+      curriculumGameHandleNoteInputRef.current(confirmedNote.fullName);
     }
   }, [confirmedNote]);
 
-  // 커리큘럼 모드 완곡 시 진행도 자동 저장 및 동기화
+  // 커리큘럼 모드 완곡 시 진행도 자동 저장 및 스티커 해금
   const lastSavedCompletedRef = useRef<boolean>(false);
   useEffect(() => {
     if (
       playMode === 'curriculum' &&
       isCurriculumPlaying &&
       activeCurriculumLevel &&
-      rhythmGame.gameState.isCompleted
+      curriculumRhythmGame.gameState.isCompleted
     ) {
       if (!lastSavedCompletedRef.current) {
         lastSavedCompletedRef.current = true;
-        const totalNotes = rhythmGame.song.notes.length || 1;
-        const processedHits = rhythmGame.gameState.perfectCount + rhythmGame.gameState.goodCount;
+        const totalNotes = curriculumRhythmGame.song.notes.length || 1;
+        const processedHits = curriculumRhythmGame.gameState.perfectCount + curriculumRhythmGame.gameState.goodCount;
         const accuracy = Math.min(100, Math.round((processedHits / totalNotes) * 100));
-        const evalResult = evaluateSongPerformance(rhythmGame.gameState.score, totalNotes);
+        const evalResult = evaluateSongPerformance(curriculumRhythmGame.gameState.score, totalNotes);
         const updated = saveLevelClear(activeCurriculumLevel.level, accuracy, evalResult.stars);
         setCurriculumProgress(updated);
+
+        const newlySticker = checkAndUnlockLevelSticker(activeCurriculumLevel.level, evalResult.stars);
+        if (newlySticker) {
+          setNewlyUnlockedSticker(newlySticker);
+        }
       }
     } else {
       lastSavedCompletedRef.current = false;
@@ -171,104 +194,129 @@ export const App: React.FC = () => {
     playMode,
     isCurriculumPlaying,
     activeCurriculumLevel,
-    rhythmGame.gameState.isCompleted,
-    rhythmGame.gameState.score,
-    rhythmGame.gameState.perfectCount,
-    rhythmGame.gameState.goodCount,
-    rhythmGame.song.notes.length,
+    curriculumRhythmGame.gameState.isCompleted,
+    curriculumRhythmGame.gameState.score,
+    curriculumRhythmGame.gameState.perfectCount,
+    curriculumRhythmGame.gameState.goodCount,
+    curriculumRhythmGame.song.notes.length,
   ]);
 
-  // 모드 변경 시 보조 훅 상태 정돈 및 모드별 팝업 격리
-  const handleSwitchMode = (newMode: AppPlayMode) => {
-    setPlayMode(newMode);
-    setIsSongModalDismissed(true); // 타 모드 전환 시 이전 연주 결과 팝업 강제 차단
-    if (newMode !== 'tutorial') {
-      tutorial.stopTutorial();
+  // 동요 모드 완곡 시 스티커 해금 체크
+  const lastSongCompletedRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (playMode === 'song' && songRhythmGame.gameState.isCompleted) {
+      if (!lastSongCompletedRef.current) {
+        lastSongCompletedRef.current = true;
+        const totalNotes = songRhythmGame.song.notes.length || 1;
+        const evalResult = evaluateSongPerformance(songRhythmGame.gameState.score, totalNotes);
+        const newlySticker = checkAndUnlockSongSticker(songRhythmGame.song.id, evalResult.stars);
+        if (newlySticker) {
+          setNewlyUnlockedSticker(newlySticker);
+        }
+      }
+    } else {
+      lastSongCompletedRef.current = false;
     }
-    if (newMode !== 'song' && newMode !== 'curriculum') {
-      rhythmGame.stopGame();
-    }
-    if (newMode === 'curriculum') {
-      setIsCurriculumPlaying(false);
-      setActiveCurriculumLevel(null);
-      setSelectedLevelForIntro(null);
-      rhythmGame.stopGame();
-    }
-    if (newMode === 'song') {
-      setIsCurriculumPlaying(false);
-      setActiveCurriculumLevel(null);
-    }
-    if (newMode === 'tutorial') {
-      tutorial.startTutorial();
-    }
-  };
+  }, [playMode, songRhythmGame.gameState.isCompleted, songRhythmGame.gameState.score, songRhythmGame.song.notes.length, songRhythmGame.song.id]);
 
-  // 커리큘럼 레벨 연습 시작 (Wait Mode)
-  const handleStartCurriculumLevel = (level: CurriculumLevel) => {
+  // 커리큘럼 스테이지 시작
+  const handleStartCurriculumLevel = (level: CurriculumLevel, speed?: PlaybackSpeed) => {
     setSelectedLevelForIntro(null);
     setActiveCurriculumLevel(level);
     setIsCurriculumPlaying(true);
     setIsSongModalDismissed(false);
-    rhythmGame.setPlayMode('practice'); // 학습자 친화형 Wait Mode로 즉시 진입
-    rhythmGame.selectSong(level.songData, true); // 즉시 해당 레벨 악보 로드 및 자동 시작 (원자적 동기화)
+    curriculumRhythmGame.setSpeed(speed ?? 1.0);
+    curriculumRhythmGame.setPlayMode('practice');
+    curriculumRhythmGame.startGame(level.songData);
   };
 
-  // 커리큘럼 모험 지도로 복귀
-  const handleReturnToCurriculumMap = () => {
-    rhythmGame.stopGame();
+  // 모험 지도로 복귀
+  const handleReturnToCurriculumMap = useCallback(() => {
+    curriculumRhythmGame.stopGame();
     setIsCurriculumPlaying(false);
     setActiveCurriculumLevel(null);
-    setIsSongModalDismissed(true);
-  };
+  }, [curriculumRhythmGame]);
 
-  // 다음 레벨 도전 핸들러
-  const handleNextCurriculumLevel = () => {
-    if (!activeCurriculumLevel) return;
+  // 다음 레벨 도전
+  const handleNextCurriculumLevel = useCallback(() => {
+    if (!activeCurriculumLevel || activeCurriculumLevel.level >= 10) return;
     const nextLevelNum = activeCurriculumLevel.level + 1;
-    const nextLevelData = getCurriculumLevel(nextLevelNum);
-    setIsSongModalDismissed(true);
-    setIsCurriculumPlaying(false);
-    setActiveCurriculumLevel(null);
-
-    if (nextLevelData) {
-      setSelectedLevelForIntro(nextLevelData);
-    }
-  };
-
-  // 연주 시작 또는 재시작 시 완곡 모달 닫힘 상태 자동 초기화 (결과 미출력 버그 방지)
-  useEffect(() => {
-    if (rhythmGame.gameState.isPlaying) {
+    const nextLevel = getCurriculumLevel(nextLevelNum);
+    if (nextLevel) {
       setIsSongModalDismissed(false);
+      setActiveCurriculumLevel(nextLevel);
+      curriculumRhythmGame.setPlayMode('practice');
+      curriculumRhythmGame.restartGame(nextLevel.songData);
     }
-  }, [rhythmGame.gameState.isPlaying]);
+  }, [activeCurriculumLevel, curriculumRhythmGame]);
 
-  // ESC 키로 엔지니어링 모니터 드로어 닫기
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && showDebug) {
-        setShowDebug(false);
+  // 모드 전환 핸들러
+  const handleSwitchMode = useCallback((newMode: AppPlayMode) => {
+    if (newMode !== 'tutorial' && tutorial.isActive) {
+      tutorial.stopTutorial();
+    }
+    if (newMode !== 'song' && songRhythmGame.gameState.isPlaying) {
+      songRhythmGame.stopGame();
+    }
+    if (newMode !== 'curriculum') {
+      if (curriculumRhythmGame.gameState.isPlaying) {
+        curriculumRhythmGame.stopGame();
       }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showDebug]);
+      setIsCurriculumPlaying(false);
+      setActiveCurriculumLevel(null);
+    }
+    setIsSongModalDismissed(false);
+    setPlayMode(newMode);
+  }, [tutorial, songRhythmGame, curriculumRhythmGame]);
 
-  // 현재 하단 건반에 표시할 타깃 음표
-  const isGameActive =
-    (playMode === 'song' || (playMode === 'curriculum' && isCurriculumPlaying)) &&
-    rhythmGame.gameState.isPlaying;
+  // [Phase D]: 안드로이드 하드웨어 Back Button 핸들러 연동
+  useEffect(() => {
+    const backHandler = CapApp.addListener('backButton', () => {
+      if (showDebug) { setShowDebug(false); return; }
+      if (showSoundMixerModal) { setShowSoundMixerModal(false); return; }
+      if (showCalibrationModal) { setShowCalibrationModal(false); return; }
+      if (showStickerBookModal) { setShowStickerBookModal(false); return; }
+      if (selectedLevelForIntro) { setSelectedLevelForIntro(null); return; }
+
+      if (playMode === 'curriculum' && isCurriculumPlaying) {
+        handleReturnToCurriculumMap();
+        return;
+      }
+
+      if (playMode !== 'curriculum') {
+        handleSwitchMode('curriculum');
+        return;
+      }
+
+      CapApp.exitApp();
+    });
+
+    return () => {
+      backHandler.then((h: { remove: () => Promise<void> }) => h.remove()).catch(() => {});
+    };
+  }, [
+    showDebug,
+    showSoundMixerModal,
+    showCalibrationModal,
+    showStickerBookModal,
+    selectedLevelForIntro,
+    playMode,
+    isCurriculumPlaying,
+    handleReturnToCurriculumMap,
+    handleSwitchMode,
+  ]);
 
   const currentTargetNoteName =
     playMode === 'tutorial' && tutorial.isActive
       ? tutorial.currentStep.key.fullName
-      : isGameActive
-      ? rhythmGame.gameState.activeTargetNote?.pitch || null
+      : playMode === 'song' && songRhythmGame.gameState.isPlaying
+      ? songRhythmGame.gameState.activeTargetNote?.pitch || null
+      : playMode === 'curriculum' && isCurriculumPlaying && curriculumRhythmGame.gameState.isPlaying
+      ? curriculumRhythmGame.gameState.activeTargetNote?.pitch || null
       : null;
 
   const currentBgImage =
-    playMode === 'curriculum'
-      ? '/images/backgrounds/bg_song_mode.png'
-      : playMode === 'song'
+    playMode === 'curriculum' || playMode === 'song'
       ? '/images/backgrounds/bg_song_mode.png'
       : playMode === 'tutorial'
       ? '/images/backgrounds/bg_tutorial_mode.png'
@@ -276,15 +324,14 @@ export const App: React.FC = () => {
 
   return (
     <div className="relative min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col justify-start p-1.5 sm:p-2.5 select-none overflow-x-hidden">
-      {/* 모드별 고화질 일러스트 배경 레이어 */}
+      {/* 고화질 일러스트 배경 레이어 */}
       <div
         className="fixed inset-0 pointer-events-none z-0 bg-cover bg-center transition-all duration-700 ease-in-out opacity-100 filter brightness-100 saturate-110"
         style={{ backgroundImage: `url(${currentBgImage})` }}
       />
-      {/* 배경이 생생하게 투과되는 초미세 비네팅 글래스 오버레이 */}
       <div className="fixed inset-0 pointer-events-none z-0 bg-black/10 backdrop-blur-[0.5px]" />
 
-      {/* 상단 네비게이션 & 헤더 (루미너스 크리스탈 글래스 바) */}
+      {/* 상단 네비게이션 & 헤더 */}
       <header className="relative z-10 w-full max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2 pb-1.5 sm:pb-2 border border-white/30 backdrop-blur-2xl bg-white/[0.12] px-3 py-1.5 sm:py-2 rounded-2xl sm:rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
         <div
           className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group active:scale-95 transition-transform"
@@ -309,7 +356,7 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        {/* 중앙: 4대 모드 선택 탭 (모험 모드 / 동요 연주 / 손가락 연습 / 자유 연주) */}
+        {/* 4대 모드 선택 탭 */}
         <div className="flex items-center bg-black/25 backdrop-blur-md p-1 rounded-2xl border border-white/20 shadow-inner">
           <button
             type="button"
@@ -366,7 +413,16 @@ export const App: React.FC = () => {
 
         {/* 컨트롤 버튼 그룹 */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* 사운드 볼륨 믹서 (MR & 효과음) */}
+          <button
+            type="button"
+            onClick={() => setShowStickerBookModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-black rounded-2xl transition-all border cursor-pointer active:scale-95 backdrop-blur-md shadow-sm bg-gradient-to-r from-amber-500/25 to-yellow-500/25 hover:from-amber-500/35 hover:to-yellow-500/35 text-amber-200 border-amber-300/50"
+            title="내가 모은 피아노 스티커북 열기"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-amber-300" />
+            <span className="hidden sm:inline">스티커북 📖</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setShowSoundMixerModal(true)}
@@ -374,10 +430,9 @@ export const App: React.FC = () => {
             title="배경 반주(MR) 및 효과음 볼륨 조절"
           >
             <Volume2 className="w-3.5 h-3.5 text-sky-300" />
-            <span className="hidden sm:inline">사운드 조절</span>
+            <span className="hidden sm:inline">볼륨 조절</span>
           </button>
 
-          {/* 피아노 8음 캘리브레이션 토글 */}
           <button
             type="button"
             onClick={() => setShowCalibrationModal(true)}
@@ -390,11 +445,10 @@ export const App: React.FC = () => {
           >
             <Sliders className={`w-3.5 h-3.5 ${calibrationProfile?.isCustom ? 'text-amber-300' : 'text-white/80'}`} />
             <span className="hidden sm:inline">
-              {calibrationProfile?.isCustom ? '피아노 조율됨' : '피아노 조율'}
+              {calibrationProfile?.isCustom ? '조율 완료 ✨' : '건반 맞추기'}
             </span>
           </button>
 
-          {/* 엔지니어링 모니터 토글 */}
           <button
             type="button"
             onClick={() => setShowDebug((prev) => !prev)}
@@ -406,10 +460,9 @@ export const App: React.FC = () => {
             title="상세 오디오 분석 및 실시간 로그 드로어 열기"
           >
             <Activity className={`w-3.5 h-3.5 ${showDebug ? 'text-cyan-300 animate-pulse' : 'text-white/80'}`} />
-            <span className="hidden sm:inline">{showDebug ? '모니터 닫기' : '엔지니어링 모니터'}</span>
+            <span className="hidden sm:inline">{showDebug ? '분석 닫기' : '소리 분석'}</span>
           </button>
 
-          {/* 마이크 시작/중지 버튼 */}
           <button
             type="button"
             onClick={isListening ? stopListening : startListening}
@@ -440,9 +493,8 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* 메인 작업 영역 */}
+      {/* 메인 작업 영역: 4대 독립 뷰 라우팅 */}
       <main className="relative z-10 w-full max-w-6xl mx-auto flex-1 flex flex-col justify-start py-1.5 sm:py-2 gap-1.5 sm:gap-2">
-        {/* 마이크 권한 오류 경고 */}
         {error && (
           <div className="w-full bg-rose-950/80 border border-rose-800 text-rose-200 px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-lg">
             <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
@@ -453,247 +505,88 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* 모드 0: Phase 8 10단계 모험 커리큘럼 모드 */}
         {playMode === 'curriculum' && (
-          <div className="flex flex-col gap-2">
-            {!isCurriculumPlaying ? (
-              /* 모험 지도 화면 */
-              <CurriculumMap
-                progress={curriculumProgress}
-                onSelectLevel={(level) => setSelectedLevelForIntro(level)}
-                onResetProgress={() => setCurriculumProgress(resetCurriculumProgress())}
-              />
-            ) : (
-              /* 커리큘럼 스테이지 연주 화면 */
-              <div className="flex flex-col gap-2 sm:gap-2.5">
-                {/* 상단 스테이지 정보 & 지도로 돌아가기 바 */}
-                <div className="w-full flex items-center justify-between px-3 py-2 rounded-2xl bg-slate-900/80 border border-amber-400/40 backdrop-blur-xl shadow-lg">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleReturnToCurriculumMap}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition cursor-pointer active:scale-95"
-                    >
-                      <ArrowLeft className="w-3.5 h-3.5" />
-                      <span>모험 지도로</span>
-                    </button>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-base sm:text-lg">{activeCurriculumLevel?.songData.icon || '🌟'}</span>
-                      <span className="text-xs sm:text-sm font-black text-amber-300">
-                        STAGE {activeCurriculumLevel?.level}: {activeCurriculumLevel?.title}
-                      </span>
-                      <span className="hidden md:inline text-xs text-slate-300">
-                        • {activeCurriculumLevel?.subtitle}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                      진행: {rhythmGame.notes.filter((n) => n.hit).length} / {rhythmGame.notes.length} 음표
-                    </span>
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-teal-400/20 text-teal-300 border border-teal-400/30">
-                      연습(Wait) 모드
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsSongModalDismissed(false);
-                        rhythmGame.restartGame(activeCurriculumLevel?.songData);
-                      }}
-                      className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
-                      title="처음부터 다시 연주"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* 팁 안내 띠 배너 */}
-                {activeCurriculumLevel && (
-                  <div className="w-full px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-400/30 text-amber-200 text-xs font-medium flex items-center justify-between backdrop-blur-md">
-                    <div className="flex items-center gap-1.5 truncate">
-                      <span className="font-bold text-amber-300">💡 학습 팁:</span>
-                      <span className="truncate">{activeCurriculumLevel.handTip}</span>
-                    </div>
-                    <span className="hidden sm:inline-block text-[11px] text-amber-300/80 shrink-0 ml-2">
-                      음표가 멈추면 건반을 톡 눌러주세요!
-                    </span>
-                  </div>
-                )}
-
-                {/* 가로 스크롤 오선보 캔버스 */}
-                <SheetMusicCanvas
-                  song={rhythmGame.song}
-                  getCurrentTime={rhythmGame.getCurrentTimeSec}
-                  isPlaying={rhythmGame.gameState.isPlaying}
-                  activeTargetNote={rhythmGame.gameState.activeTargetNote}
-                  lastHitEvent={rhythmGame.lastHitEvent}
-                  isWaitingForInput={rhythmGame.gameState.isWaitingForInput}
-                />
-
-                {/* 하단 3D 건반 및 실시간 통합 모니터 */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-2 sm:gap-2.5 items-stretch">
-                  <div className="md:col-span-8 flex flex-col">
-                    <VirtualPiano
-                      activeNote={confirmedNote || debugInfo.note}
-                      targetNoteFullName={currentTargetNoteName}
-                      onKeyClick={handleKeyOrSimulate}
-                    />
-                  </div>
-                  <div className="md:col-span-4 flex flex-col">
-                    <SongModeSoundMonitor
-                      note={confirmedNote || debugInfo.note}
-                      rawFrequency={debugInfo.frequency}
-                      isListening={isListening}
-                      volumeDb={debugInfo.volumeDb}
-                      isGateOpen={debugInfo.isGateOpen}
-                      noiseThreshold={noiseThreshold}
-                      onThresholdChange={setNoiseThreshold}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <AdventureModeView
+            isCurriculumPlaying={isCurriculumPlaying}
+            curriculumProgress={curriculumProgress}
+            activeCurriculumLevel={activeCurriculumLevel}
+            rhythmGame={curriculumRhythmGame}
+            confirmedNote={confirmedNote}
+            debugInfo={debugInfo}
+            isListening={isListening}
+            noiseThreshold={noiseThreshold}
+            currentTargetNoteName={currentTargetNoteName}
+            onSelectLevel={(level) => setSelectedLevelForIntro(level)}
+            onResetProgress={() => setCurriculumProgress(resetCurriculumProgress())}
+            onReturnToMap={handleReturnToCurriculumMap}
+            onKeyClick={handleKeyOrSimulate}
+            onThresholdChange={setNoiseThreshold}
+            onRestartStage={() => {
+              setIsSongModalDismissed(false);
+              curriculumRhythmGame.restartGame(activeCurriculumLevel?.songData);
+            }}
+          />
         )}
 
-        {/* 모드 1: 동요 리듬 게임 (Phase 4 & 7) */}
         {playMode === 'song' && (
-          <div className="flex flex-col gap-2 sm:gap-2.5">
-            {/* Phase 7: 알록달록 동요 5곡 선택 카드 슬라이더 */}
-            <SongSelectionCardList
-              songs={SONG_CATALOG}
-              selectedSongId={rhythmGame.song.id}
-              isPlaying={rhythmGame.gameState.isPlaying}
-              onSelectSong={(song) => {
-                setIsSongModalDismissed(false);
-                rhythmGame.selectSong(song);
-              }}
-            />
-
-            {/* 상단 컨트롤러 및 진행바 & MR 반주 토글 & 곡 선택 */}
-            <SongPlayHeader
-              song={rhythmGame.song}
-              gameState={rhythmGame.gameState}
-              isMrMuted={rhythmGame.isMrMuted}
-              onPlay={() => {
-                setIsSongModalDismissed(false);
-                rhythmGame.startGame();
-              }}
-              onResume={rhythmGame.resumeGame}
-              onPause={rhythmGame.pauseGame}
-              onRestart={() => {
-                setIsSongModalDismissed(false);
-                rhythmGame.restartGame();
-              }}
-              onSelectSong={(song) => {
-                setIsSongModalDismissed(false);
-                rhythmGame.selectSong(song);
-              }}
-              onToggleMr={rhythmGame.toggleMr}
-              onTogglePlayMode={rhythmGame.togglePlayMode}
-              onOpenSoundMixer={() => setShowSoundMixerModal(true)}
-            />
-
-            {/* 가로 스크롤 오선보 캔버스 */}
-            <SheetMusicCanvas
-              song={rhythmGame.song}
-              getCurrentTime={rhythmGame.getCurrentTimeSec}
-              isPlaying={rhythmGame.gameState.isPlaying}
-              activeTargetNote={rhythmGame.gameState.activeTargetNote}
-              lastHitEvent={rhythmGame.lastHitEvent}
-              isWaitingForInput={rhythmGame.gameState.isWaitingForInput}
-            />
-
-            {/* 하단 3D 건반 및 실시간 통합 모니터 */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-2 sm:gap-2.5 items-stretch">
-              <div className="md:col-span-8 flex flex-col">
-                <VirtualPiano
-                  activeNote={confirmedNote || debugInfo.note}
-                  targetNoteFullName={currentTargetNoteName}
-                  onKeyClick={handleKeyOrSimulate}
-                />
-              </div>
-              <div className="md:col-span-4 flex flex-col">
-                <SongModeSoundMonitor
-                  note={confirmedNote || debugInfo.note}
-                  rawFrequency={debugInfo.frequency}
-                  isListening={isListening}
-                  volumeDb={debugInfo.volumeDb}
-                  isGateOpen={debugInfo.isGateOpen}
-                  noiseThreshold={noiseThreshold}
-                  onThresholdChange={setNoiseThreshold}
-                />
-              </div>
-            </div>
-          </div>
+          <SongPlayModeView
+            rhythmGame={songRhythmGame}
+            confirmedNote={confirmedNote}
+            debugInfo={debugInfo}
+            isListening={isListening}
+            noiseThreshold={noiseThreshold}
+            currentTargetNoteName={currentTargetNoteName}
+            onSelectSong={(song: SongMetadata) => {
+              setIsSongModalDismissed(false);
+              songRhythmGame.selectSong(song);
+            }}
+            onPlay={() => {
+              setIsSongModalDismissed(false);
+              songRhythmGame.startGame();
+            }}
+            onRestart={() => {
+              setIsSongModalDismissed(false);
+              songRhythmGame.restartGame();
+            }}
+            onKeyClick={handleKeyOrSimulate}
+            onThresholdChange={setNoiseThreshold}
+            onOpenSoundMixer={() => setShowSoundMixerModal(true)}
+          />
         )}
 
-        {/* 모드 2: 손가락 연습 모드 (Phase 3) */}
         {playMode === 'tutorial' && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 sm:gap-3 items-stretch">
-            <div className="md:col-span-5 flex flex-col gap-2.5 justify-between">
-              <TutorialGuide
-                currentStep={tutorial.currentStep}
-                currentStepIndex={tutorial.currentStepIndex}
-                isCelebrating={tutorial.isCelebrating}
-                onClose={() => handleSwitchMode('free')}
-              />
-              <NoiseGateControl
-                volumeDb={debugInfo.volumeDb}
-                noiseThreshold={noiseThreshold}
-                isGateOpen={debugInfo.isGateOpen}
-                onThresholdChange={setNoiseThreshold}
-              />
-            </div>
-            <div className="md:col-span-7 flex flex-col gap-2.5 justify-between">
-              <VirtualPiano
-                activeNote={confirmedNote || debugInfo.note}
-                targetNoteFullName={currentTargetNoteName}
-                onKeyClick={handleKeyOrSimulate}
-              />
-              <PianoRangeTester currentNote={confirmedNote || debugInfo.note} />
-            </div>
-          </div>
+          <TutorialModeView
+            tutorial={tutorial}
+            confirmedNote={confirmedNote}
+            debugInfo={debugInfo}
+            noiseThreshold={noiseThreshold}
+            currentTargetNoteName={currentTargetNoteName}
+            onClose={() => handleSwitchMode('free')}
+            onKeyClick={handleKeyOrSimulate}
+            onThresholdChange={setNoiseThreshold}
+          />
         )}
 
-        {/* 모드 3: 자유 연주 모드 (Phase 2) */}
         {playMode === 'free' && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 sm:gap-3 items-stretch">
-            <div className="md:col-span-5 flex flex-col gap-2.5 justify-between">
-              <NoiseGateControl
-                volumeDb={debugInfo.volumeDb}
-                noiseThreshold={noiseThreshold}
-                isGateOpen={debugInfo.isGateOpen}
-                onThresholdChange={setNoiseThreshold}
-              />
-              <PitchCard
-                note={confirmedNote || debugInfo.note}
-                rawFrequency={debugInfo.frequency}
-                isListening={isListening}
-                volumeDb={debugInfo.volumeDb}
-                isGateOpen={debugInfo.isGateOpen}
-              />
-            </div>
-            <div className="md:col-span-7 flex flex-col gap-2.5 justify-between">
-              <VirtualPiano
-                activeNote={confirmedNote || debugInfo.note}
-                targetNoteFullName={null}
-                onKeyClick={handleKeyOrSimulate}
-              />
-              <PianoRangeTester currentNote={confirmedNote || debugInfo.note} />
-            </div>
-          </div>
+          <FreePlayModeView
+            confirmedNote={confirmedNote}
+            debugInfo={debugInfo}
+            isListening={isListening}
+            noiseThreshold={noiseThreshold}
+            onKeyClick={handleKeyOrSimulate}
+            onThresholdChange={setNoiseThreshold}
+          />
         )}
       </main>
 
-      {/* 별가루 축하 파티클 효과 */}
+      {/* 별가루 파티클 효과 */}
       <ConfettiEffect
         isActive={
           (playMode === 'tutorial' && (tutorial.isCelebrating || tutorial.isCompleted)) ||
-          ((playMode === 'song' || (playMode === 'curriculum' && isCurriculumPlaying)) &&
-            rhythmGame.gameState.isCompleted &&
+          (playMode === 'song' && songRhythmGame.gameState.isCompleted && !isSongModalDismissed) ||
+          (playMode === 'curriculum' &&
+            isCurriculumPlaying &&
+            curriculumRhythmGame.gameState.isCompleted &&
             !isSongModalDismissed)
         }
         onComplete={() => {
@@ -701,7 +594,7 @@ export const App: React.FC = () => {
         }}
       />
 
-      {/* Phase 3 올클리어 모달 (손가락 연습 모드에서만 단독 발동) */}
+      {/* 튜토리얼 올클리어 모달 */}
       <TutorialCompletionModal
         isOpen={playMode === 'tutorial' && tutorial.isCompleted}
         onRestart={tutorial.restartTutorial}
@@ -712,39 +605,63 @@ export const App: React.FC = () => {
         }}
       />
 
-      {/* Phase 4 & 8 완곡 축하 모달 (연주 모드 및 커리큘럼 모드) */}
-      {(playMode === 'song' || (playMode === 'curriculum' && isCurriculumPlaying)) &&
-        rhythmGame.gameState.isCompleted &&
+      {/* 완곡 축하 모달: 동요 모드 */}
+      {playMode === 'song' &&
+        songRhythmGame.gameState.isCompleted &&
         !isSongModalDismissed && (
           <SongCompletionModal
-            song={rhythmGame.song}
-            gameState={rhythmGame.gameState}
-            isCurriculumMode={playMode === 'curriculum'}
+            song={songRhythmGame.song}
+            gameState={songRhythmGame.gameState}
+            isCurriculumMode={false}
+            hasNextLevel={false}
+            onNextLevel={handleNextCurriculumLevel}
+            onRestart={() => {
+              setIsSongModalDismissed(false);
+              songRhythmGame.restartGame();
+            }}
+            onClose={() => {
+              setIsSongModalDismissed(true);
+            }}
+            unlockedSticker={newlyUnlockedSticker}
+            onOpenStickerBook={() => setShowStickerBookModal(true)}
+          />
+        )}
+
+      {/* 완곡 축하 모달: 커리큘럼 모드 */}
+      {playMode === 'curriculum' &&
+        isCurriculumPlaying &&
+        curriculumRhythmGame.gameState.isCompleted &&
+        !isSongModalDismissed && (
+          <SongCompletionModal
+            song={curriculumRhythmGame.song}
+            gameState={curriculumRhythmGame.gameState}
+            isCurriculumMode={true}
             hasNextLevel={activeCurriculumLevel ? activeCurriculumLevel.level < 10 : false}
             onNextLevel={handleNextCurriculumLevel}
             onRestart={() => {
               setIsSongModalDismissed(false);
-              rhythmGame.restartGame();
+              curriculumRhythmGame.restartGame();
             }}
             onClose={() => {
               setIsSongModalDismissed(true);
-              if (playMode === 'curriculum') {
-                setIsCurriculumPlaying(false);
-                setActiveCurriculumLevel(null);
-              }
+              setIsCurriculumPlaying(false);
+              setActiveCurriculumLevel(null);
             }}
+            unlockedSticker={newlyUnlockedSticker}
+            onOpenStickerBook={() => setShowStickerBookModal(true)}
           />
         )}
 
-      {/* Phase 8 커리큘럼 스테이지 안내 모달 */}
+      {/* 커리큘럼 스테이지 안내 모달 */}
       <LevelIntroModal
         level={selectedLevelForIntro}
         isOpen={!!selectedLevelForIntro}
+        initialSpeed={curriculumRhythmGame.speed}
         onClose={() => setSelectedLevelForIntro(null)}
         onStartPractice={handleStartCurriculumLevel}
       />
 
-      {/* 피아노 8음 캘리브레이션 위저드 모달 */}
+      {/* 8음 캘리브레이션 위저드 모달 */}
       <PianoCalibrationModal
         isOpen={showCalibrationModal}
         onClose={() => setShowCalibrationModal(false)}
@@ -758,15 +675,27 @@ export const App: React.FC = () => {
         simulateNote={handleKeyOrSimulate}
       />
 
-      {/* 배경 반주(MR) 및 효과음 볼륨 믹서 모달 */}
+      {/* 볼륨 믹서 모달 */}
       <SoundMixerModal
         isOpen={showSoundMixerModal}
         onClose={() => setShowSoundMixerModal(false)}
       />
 
-      {/* 리듬 게임 콤보 달성 시 축하 팝업 */}
+      {/* 스티커북 모달 */}
+      <StickerBookModal
+        isOpen={showStickerBookModal}
+        onClose={() => setShowStickerBookModal(false)}
+      />
+
+      {/* 콤보 오버레이 */}
       {(playMode === 'song' || (playMode === 'curriculum' && isCurriculumPlaying)) && (
-        <ComboFireworkOverlay combo={rhythmGame.gameState.combo} />
+        <ComboFireworkOverlay
+          combo={
+            playMode === 'song'
+              ? songRhythmGame.gameState.combo
+              : curriculumRhythmGame.gameState.combo
+          }
+        />
       )}
 
       {/* 시작/스플래시 화면 */}
@@ -774,7 +703,6 @@ export const App: React.FC = () => {
         <IntroSplashScreen
           onStartPlay={() => {
             setShowSplash(false);
-            // 사용자 명시적 제스처 시점에 마이크 시작 (브라우저 마이크 허용 팝업 트리거)
             startListening().catch(() => {});
           }}
           onOpenCalibration={() => {

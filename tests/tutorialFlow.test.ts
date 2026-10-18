@@ -5,12 +5,12 @@ import { soundEffects } from '../src/utils/soundEffects';
 
 console.log('🧪 [Tier 1: Tutorial Flow & Target Matching Test] 시작...');
 
-// 1. 스텝 5개 불변성 및 SSOT 주파수 검증 (C4~G4, 1~5번 손가락)
-assert.strictEqual(TUTORIAL_STEPS.length, 5, '튜토리얼 스텝은 정확히 5개여야 합니다.');
+// 1. 스텝 8개 불변성 및 SSOT 주파수 검증 (C4~C5, 8음)
+assert.strictEqual(TUTORIAL_STEPS.length, 8, '튜토리얼 스텝은 정확히 8개여야 합니다.');
 
-const expectedNotes = ['C4', 'D4', 'E4', 'F4', 'G4'];
-const expectedFrequencies = [261.63, 293.66, 329.63, 349.23, 392.00];
-const expectedFingers = [1, 2, 3, 4, 5];
+const expectedNotes = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'];
+const expectedFrequencies = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+const expectedFingers = [1, 2, 3, 4, 5, 1, 2, 3];
 
 TUTORIAL_STEPS.forEach((step, idx) => {
   assert.strictEqual(step.stepIndex, idx, `스텝 인덱스 ${idx} 일치`);
@@ -19,7 +19,7 @@ TUTORIAL_STEPS.forEach((step, idx) => {
   assert.strictEqual(step.key.fullName, CORE_PIANO_KEYS[idx].fullName, 'CORE_PIANO_KEYS와의 SSOT 일치');
   assert.strictEqual(step.key.frequency, expectedFrequencies[idx], `기준 주파수 ${expectedFrequencies[idx]}Hz 일치`);
 });
-console.log('  ✅ 튜토리얼 5단계 C4~G4, 손가락 번호 및 주파수(SSOT) 불변성 통과');
+console.log('  ✅ 튜토리얼 8단계 C4~C5, 손가락 번호 및 주파수(SSOT) 불변성 통과');
 
 // 2. getCoreKeyNoteInfo 헬퍼 함수 검증
 expectedNotes.forEach((fullName, idx) => {
@@ -29,7 +29,7 @@ expectedNotes.forEach((fullName, idx) => {
   assert.strictEqual(noteInfo?.frequency, expectedFrequencies[idx]);
   assert.strictEqual(noteInfo?.fingerNumber, expectedFingers[idx]);
 });
-  assert.ok(getCoreKeyNoteInfo('C5') !== null, 'C5는 이제 CORE_PIANO_KEYS에 포함됨');
+  assert.ok(getCoreKeyNoteInfo('C5') !== null, 'C5는 CORE_PIANO_KEYS에 포함됨');
   assert.strictEqual(getCoreKeyNoteInfo('C6'), null, '범위 밖 음표(C6)는 null 반환');
 console.log('  ✅ getCoreKeyNoteInfo SSOT 헬퍼 함수 통과');
 
@@ -44,8 +44,12 @@ assert.strictEqual(isNoteMatchingStep(undefined, 0), false, 'undefined 입력 �
 assert.strictEqual(isNoteMatchingStep('G4', 4), true, '4단계 G4 일치 시 true');
 assert.strictEqual(isNoteMatchingStep('C4', 4), false, '4단계 C4 입력 시 false');
 
+// 7단계: C5 (높은도)
+assert.strictEqual(isNoteMatchingStep('C5', 7), true, '7단계 C5 일치 시 true');
+assert.strictEqual(isNoteMatchingStep('C4', 7), false, '7단계 C4 입력 시 false');
+
 // 범위 밖 스텝 인덱스
-assert.strictEqual(isNoteMatchingStep('C4', 5), false, '범위 초과 인덱스는 false');
+assert.strictEqual(isNoteMatchingStep('C4', 8), false, '범위 초과 인덱스는 false');
 assert.strictEqual(isNoteMatchingStep('C4', -1), false, '음수 인덱스는 false');
 console.log('  ✅ 타깃 음표 순수 판정 로직 경계값 통과');
 

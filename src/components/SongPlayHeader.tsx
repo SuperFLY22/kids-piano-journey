@@ -1,6 +1,6 @@
 import React from 'react';
 import { Play, Pause, RotateCcw, Flame, Trophy, Volume2, VolumeX, Sparkles, Zap, SlidersHorizontal } from 'lucide-react';
-import { SongMetadata, RhythmGameState } from '../types/sheet';
+import { SongMetadata, RhythmGameState, PlaybackSpeed } from '../types/sheet';
 import { beatToSeconds, SONG_CATALOG } from '../utils/songData';
 
 interface SongPlayHeaderProps {
@@ -8,6 +8,7 @@ interface SongPlayHeaderProps {
   gameState: RhythmGameState;
   songList?: SongMetadata[];
   isMrMuted?: boolean;
+  speed?: PlaybackSpeed;
   onPlay: () => void;
   onResume?: () => void;
   onPause: () => void;
@@ -15,6 +16,7 @@ interface SongPlayHeaderProps {
   onSelectSong?: (song: SongMetadata) => void;
   onToggleMr?: () => void;
   onTogglePlayMode?: () => void;
+  onToggleSpeed?: () => void;
   onOpenSoundMixer?: () => void;
 }
 
@@ -23,6 +25,7 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
   gameState,
   songList = SONG_CATALOG,
   isMrMuted = false,
+  speed = 1.0,
   onPlay,
   onResume,
   onPause,
@@ -30,9 +33,12 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
   onSelectSong,
   onToggleMr,
   onTogglePlayMode,
+  onToggleSpeed,
   onOpenSoundMixer,
 }) => {
-  const totalDurationSec = beatToSeconds(song.totalMeasures * song.beatsPerMeasure, song.bpm);
+  const effectiveBpm = Math.max(30, Math.round(song.bpm * (speed || gameState.speed || 1.0)));
+  const totalDurationSec = beatToSeconds(song.totalMeasures * song.beatsPerMeasure, effectiveBpm);
+
   const progressRatio = Math.max(
     0,
     Math.min(1, Math.max(0, gameState.currentTimeSec) / totalDurationSec)
@@ -118,23 +124,41 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
                   )}
                 </button>
               )}
+
+              {/* Phase 9: 연주 속도 조절 토글 (거북이 0.75x / 토끼 1.0x) */}
+              {onToggleSpeed && (
+                <button
+                  type="button"
+                  onClick={onToggleSpeed}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] sm:text-xs font-black transition active:scale-95 cursor-pointer shadow-sm ${
+                    speed === 0.75
+                      ? 'bg-gradient-to-r from-amber-600 via-amber-700 to-yellow-600 text-amber-100 border border-amber-300/80 shadow-[0_2px_10px_rgba(217,119,6,0.4)]'
+                      : 'bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-600 text-sky-100 border border-sky-300/80 shadow-[0_2px_10px_rgba(14,165,233,0.4)]'
+                  }`}
+                  title={speed === 0.75 ? '거북이 모드(0.75배속): 여유로운 연주 (클릭 시 토끼 1.0배속)' : '토끼 모드(1.0배속): 정규 속도 (클릭 시 거북이 0.75배속)'}
+                >
+                  <span className="text-xs">{speed === 0.75 ? '🐢' : '🐰'}</span>
+                  <span>{speed === 0.75 ? '거북이 (0.75x)' : '토끼 (1.0x)'}</span>
+                </button>
+              )}
             </div>
 
             <p className="text-[10px] text-white/80 font-bold leading-tight truncate mt-0.5 max-w-[280px] sm:max-w-md drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
               {gameState.isPlaying
                 ? gameState.currentTimeSec < 0
-                  ? `준비 중... (${Math.ceil(Math.abs(gameState.currentTimeSec))}초)`
+                  ? `🚀 출발 준비! (${gameState.countdown ?? Math.ceil(Math.abs(gameState.currentTimeSec))})`
                   : gameState.isWaitingForInput && activeNote
                   ? `🎹 [${activeNote.solfege}] 음을 칠 때까지 기다리고 있어요!`
                   : isPractice
                   ? '연습 중! 음표가 올 때까지 기다립니다'
                   : '실전 연주 중! 타이밍에 맞춰 피아노를 누르세요'
                 : gameState.isPaused
-                ? '일시정지됨'
+                ? '일시정지됨 • 속도(🐢/🐰)나 모드를 조절하고 이어하세요'
                 : '시작 버튼을 눌러 연주를 시작하세요'}
             </p>
           </div>
         </div>
+
 
         {/* 현재 타깃 가이드 뱃지 */}
         {activeNote && (
@@ -176,17 +200,17 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
                   ? 'bg-sky-500/30 text-sky-200 border-sky-400/50 hover:bg-sky-500/40'
                   : 'bg-black/25 text-white/70 border-white/20 hover:text-white'
               }`}
-              title={!isMrMuted ? 'MR 배경 반주 켜짐 (클릭 시 끄기)' : 'MR 배경 반주 꺼짐 (클릭 시 켜기)'}
+              title={!isMrMuted ? '배경 반주 켜짐 (클릭 시 끄기)' : '배경 반주 꺼짐 (클릭 시 켜기)'}
             >
               {!isMrMuted ? (
                 <>
                   <Volume2 className="w-3.5 h-3.5 text-sky-300" />
-                  <span className="hidden lg:inline text-[10px]">MR ON</span>
+                  <span className="hidden lg:inline text-[10px]">반주 ON</span>
                 </>
               ) : (
                 <>
                   <VolumeX className="w-3.5 h-3.5 text-white/50" />
-                  <span className="hidden lg:inline text-[10px]">MR OFF</span>
+                  <span className="hidden lg:inline text-[10px]">반주 OFF</span>
                 </>
               )}
             </button>
@@ -198,10 +222,10 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
               type="button"
               onClick={onOpenSoundMixer}
               className="p-1.5 rounded-xl border border-white/20 bg-black/25 hover:bg-white/10 text-white/80 hover:text-white transition active:scale-95 shadow-sm cursor-pointer backdrop-blur-md flex items-center gap-1"
-              title="사운드 볼륨 조절"
+              title="소리 크기 조절"
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-amber-300" />
-              <span className="hidden xl:inline text-[10px] font-bold">볼륨</span>
+              <span className="hidden xl:inline text-[10px] font-bold">소리 크기</span>
             </button>
           )}
 

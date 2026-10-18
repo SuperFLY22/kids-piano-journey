@@ -7,11 +7,12 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "npx tsx tests/audioMath.test.ts && npx tsx tests/slidingWindow.test.ts && npx tsx tests/keyboardMapping.test.ts && npx tsx tests/tutorialFlow.test.ts && npx tsx tests/rhythmGame.test.ts && npx tsx tests/accompaniment.test.ts && npx tsx tests/curriculum.test.ts"
+    "test": "npx tsx tests/audioMath.test.ts && npx tsx tests/slidingWindow.test.ts && npx tsx tests/keyboardMapping.test.ts && npx tsx tests/tutorialFlow.test.ts && npx tsx tests/rhythmGame.test.ts && npx tsx tests/accompaniment.test.ts && npx tsx tests/curriculum.test.ts && npx tsx tests/sticker.test.ts"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",
     "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.3",
     "lucide-react": "^0.475.0",
     "pitchfinder": "^2.3.4",

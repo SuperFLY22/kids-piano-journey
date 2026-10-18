@@ -24,7 +24,7 @@ export const HandGuideGraphic: React.FC<HandGuideGraphicProps> = ({ activeFinger
           오른손 손가락 자리
         </span>
         <span className="text-[10px] text-cyan-200 font-bold bg-cyan-950/70 px-2 py-0.5 rounded-full border border-cyan-700/60 shadow-inner">
-          가온 C (도~솔)
+          1옥타브 (도~높은도)
         </span>
       </div>
 

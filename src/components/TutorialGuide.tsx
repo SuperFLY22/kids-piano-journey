@@ -1,5 +1,4 @@
-import React from 'react';
-import { Star, Sparkles, CheckCircle2, ChevronRight, X } from 'lucide-react';
+import { Star, Sparkles, CheckCircle2, ChevronRight, X, RotateCcw } from 'lucide-react';
 import { TutorialStep } from '../types/tutorial';
 import { HandGuideGraphic } from './HandGuideGraphic';
 import { TUTORIAL_STEPS } from '../utils/tutorialData';
@@ -9,6 +8,7 @@ interface TutorialGuideProps {
   currentStepIndex: number;
   isCelebrating: boolean;
   onClose: () => void;
+  onRestart?: () => void;
 }
 
 export const TutorialGuide: React.FC<TutorialGuideProps> = ({
@@ -16,6 +16,7 @@ export const TutorialGuide: React.FC<TutorialGuideProps> = ({
   currentStepIndex,
   isCelebrating,
   onClose,
+  onRestart,
 }) => {
   const { key, fingerNumber, fingerName, prompt } = currentStep;
 
@@ -31,33 +32,48 @@ export const TutorialGuide: React.FC<TutorialGuideProps> = ({
             <span className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
               손가락 연습 튜토리얼
               <span className="text-[10px] font-semibold text-cyan-200 bg-cyan-950/70 px-2 py-0.5 rounded-full border border-cyan-700/60 shadow-inner">
-                {currentStepIndex + 1} / 5 단계
+                {currentStepIndex + 1} / {TUTORIAL_STEPS.length} 단계
               </span>
             </span>
           </div>
         </div>
 
-        {/* 닫기 (자유 연주로 복귀) 버튼 */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-          title="튜토리얼 종료하고 자유 연주 모드로 가기"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        {/* 액션 버튼 그룹: 처음부터 리셋 & 닫기 */}
+        <div className="flex items-center gap-1.5">
+          {onRestart && (
+            <button
+              type="button"
+              onClick={onRestart}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition active:scale-95 cursor-pointer text-xs font-bold border border-white/15 shadow-sm"
+              title="1단계(도)부터 다시 시작"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-amber-300" />
+              <span className="hidden sm:inline">처음부터</span>
+            </button>
+          )}
+
+          {/* 닫기 (자유 연주로 복귀) 버튼 */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            title="튜토리얼 종료하고 자유 연주 모드로 가기"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {/* 5개 별 진행 바 */}
-      <div className="flex items-center justify-between px-2 py-1.5 bg-black/25 backdrop-blur-md rounded-xl border border-white/20">
+      {/* 8개 별 진행 바 */}
+      <div className="flex items-center justify-between gap-0.5 sm:gap-1 px-1.5 py-1 bg-black/25 backdrop-blur-md rounded-xl border border-white/20 overflow-x-auto scrollbar-none">
         {TUTORIAL_STEPS.map((step, idx) => {
           const isDone = idx < currentStepIndex;
           const isCurrent = idx === currentStepIndex;
 
           return (
-            <div key={step.stepIndex} className="flex items-center gap-1 flex-1 justify-center">
+            <div key={step.stepIndex} className="flex items-center gap-0.5 flex-1 justify-center shrink-0">
               <div
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+                className={`flex items-center gap-0.5 sm:gap-1 px-1.5 py-0.5 rounded-lg font-bold transition-all ${
                   isDone
                     ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/60'
                     : isCurrent
@@ -66,7 +82,7 @@ export const TutorialGuide: React.FC<TutorialGuideProps> = ({
                 }`}
               >
                 <Star
-                  className={`w-3.5 h-3.5 ${
+                  className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${
                     isDone
                       ? 'fill-emerald-400 text-emerald-400'
                       : isCurrent
@@ -74,11 +90,13 @@ export const TutorialGuide: React.FC<TutorialGuideProps> = ({
                       : 'text-slate-700'
                   }`}
                 />
-                <span className="text-[11px] font-mono">
+                <span className="text-[9px] sm:text-[10px] md:text-[11px] font-mono whitespace-nowrap">
                   {step.fingerNumber}번 {step.key.koreanName}
                 </span>
               </div>
-              {idx < 4 && <ChevronRight className="w-3 h-3 text-slate-700 shrink-0 hidden sm:block" />}
+              {idx < TUTORIAL_STEPS.length - 1 && (
+                <ChevronRight className="w-2.5 h-2.5 text-slate-700 shrink-0 hidden xl:block" />
+              )}
             </div>
           );
         })}

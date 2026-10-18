@@ -45,6 +45,7 @@ export const AIRPLANE_SONG: SongMetadata = createSong({
   description: '손가락 1, 2, 3, 5번으로 경쾌하게 비행기를 날려보아요!',
   icon: '✈️',
   themeColor: 'from-sky-500 to-indigo-600',
+  accompanimentChords: ['C', 'C', 'G7', 'C', 'C', 'C', 'G7', 'C'],
   notes: AIRPLANE_TUPLES,
 });
 
@@ -81,6 +82,7 @@ export const BUTTERFLY_SONG: SongMetadata = createSong({
   description: '1번부터 5번 손가락을 골고루 움직이며 봄 나비를 맞이해요.',
   icon: '🦋',
   themeColor: 'from-amber-400 to-rose-500',
+  accompanimentChords: ['C', 'G7', 'C', 'C', 'C', 'G7', 'C', 'C'],
   notes: BUTTERFLY_TUPLES,
 });
 
@@ -117,6 +119,7 @@ export const TWINKLE_STAR_SONG: SongMetadata = createSong({
   description: 'A4(라) 음표까지 손가락을 넓혀 모차르트의 반짝이는 선율을 연주해요.',
   icon: '🌟',
   themeColor: 'from-yellow-400 to-amber-600',
+  accompanimentChords: ['C', 'C', 'C', 'G7', 'C', 'G7', 'C', 'C'],
   notes: TWINKLE_STAR_TUPLES,
 });
 
@@ -153,6 +156,7 @@ export const THREE_BEARS_SONG: SongMetadata = createSong({
   description: '도-미-솔 3화음과 신나는 리듬으로 으쓱으쓱 연주해보아요.',
   icon: '🐻',
   themeColor: 'from-orange-500 to-amber-700',
+  accompanimentChords: ['C', 'C', 'C', 'C', 'C', 'G7', 'G7', 'C'],
   notes: THREE_BEARS_TUPLES,
 });
 
@@ -189,6 +193,7 @@ export const ODE_TO_JOY_SONG: SongMetadata = createSong({
   description: '베토벤 교향곡 9번의 웅장한 테마를 5손가락으로 멋지게 완성해요.',
   icon: '🕊️',
   themeColor: 'from-emerald-500 to-teal-700',
+  accompanimentChords: ['C', 'G7', 'C', 'G7', 'C', 'G7', 'C', 'C'],
   notes: ODE_TO_JOY_TUPLES,
 });
 

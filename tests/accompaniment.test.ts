@@ -15,7 +15,14 @@ songIds.forEach((id) => {
   assert.ok(prog, `${id} 진행표 존재`);
   assert.strictEqual(prog.length, 8, `${id}는 8마디 진행이어야 함`);
 });
-console.log('  ✅ 8마디 코드 진행표 통과');
+
+// [SSOT 검증]: SONG_CATALOG의 5곡 전곡에 accompanimentChords가 올바르게 탑재되어 있는지 검증
+import { SONG_CATALOG } from '../src/utils/songData';
+SONG_CATALOG.forEach((song) => {
+  assert.ok(song.accompanimentChords, `${song.title}에 accompanimentChords가 정의되어 있어야 함`);
+  assert.strictEqual(song.accompanimentChords.length, 8, `${song.title}는 8마디 코드 진행이어야 함`);
+});
+console.log('  ✅ 8마디 코드 진행표 및 SONG_CATALOG SSOT 무결성 통과');
 
 // 2. 마이크 피치 간섭 방지 (저음부 격리) 검증
 console.log('  2. 저음부 주파수 및 화음 주파수 무결성 검증...');

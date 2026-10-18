@@ -34,7 +34,7 @@ export const SongSelectionCardList: React.FC<SongSelectionCardListProps> = React
             <Music className="w-3.5 h-3.5" />
           </div>
           <span className="text-xs font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-            동요 보물상자 5곡
+            동요 앨범 (5곡)
           </span>
           <span className="text-[10px] font-bold text-amber-300 bg-black/30 px-2 py-0.5 rounded-full border border-white/10">
             현재: {currentSong.icon || '🎵'} {currentSong.title}
@@ -43,7 +43,7 @@ export const SongSelectionCardList: React.FC<SongSelectionCardListProps> = React
 
         <div className="flex items-center gap-1.5 text-xs font-bold text-white/80">
           <span className="text-[10px] hidden sm:inline text-white/70">
-            {isExpanded ? '카드 접기' : '곡 카드 펼쳐보기'}
+            {isExpanded ? '곡 목록 닫기' : '다른 곡 골라보기 🎶'}
           </span>
           {isExpanded ? (
             <ChevronUp className="w-4 h-4 text-amber-300" />

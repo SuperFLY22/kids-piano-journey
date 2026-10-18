@@ -42,6 +42,7 @@ export interface CreateSongConfig {
   description?: string;
   icon?: string;
   themeColor?: string;
+  accompanimentChords?: Array<'C' | 'G7'>;
   notes: SongNoteTuple[];
 }
 
@@ -90,6 +91,7 @@ export function createSong(config: CreateSongConfig): SongMetadata {
     description: config.description,
     icon: config.icon,
     themeColor: config.themeColor,
+    accompanimentChords: config.accompanimentChords,
     notes,
   };
 }

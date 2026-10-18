@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Star, RotateCcw, CheckCircle2, Award, Sparkles } from 'lucide-react';
+import { Trophy, Star, RotateCcw, CheckCircle2, Award, Sparkles, BookOpen } from 'lucide-react';
 import { RhythmGameState, SongMetadata } from '../types/sheet';
+import { RewardSticker } from '../types/sticker';
 
 import { evaluateSongPerformance } from '../utils/songData';
 
@@ -12,6 +13,8 @@ interface SongCompletionModalProps {
   isCurriculumMode?: boolean;
   hasNextLevel?: boolean;
   onNextLevel?: () => void;
+  unlockedSticker?: RewardSticker | null;
+  onOpenStickerBook?: () => void;
 }
 
 export const SongCompletionModal: React.FC<SongCompletionModalProps> = ({
@@ -22,7 +25,10 @@ export const SongCompletionModal: React.FC<SongCompletionModalProps> = ({
   isCurriculumMode = false,
   hasNextLevel = false,
   onNextLevel,
+  unlockedSticker = null,
+  onOpenStickerBook,
 }) => {
+
   const [imageFailed, setImageFailed] = useState(false);
   const [animatedStars, setAnimatedStars] = useState<number>(0);
 
@@ -188,8 +194,43 @@ export const SongCompletionModal: React.FC<SongCompletionModalProps> = ({
           </div>
         </div>
 
+        {/* Phase 9: 새로 해금된 스티커 획득 축하 배너 */}
+        {unlockedSticker && (
+          <div className="w-full bg-gradient-to-r from-amber-500/30 via-pink-500/25 to-purple-500/30 border-2 border-amber-300 rounded-2xl p-2.5 sm:p-3 mb-4 shadow-[0_0_25px_rgba(251,191,36,0.4)] flex items-center justify-between gap-3 animate-pulse">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-3xl sm:text-4xl drop-shadow-md shrink-0 animate-bounce">
+                {unlockedSticker.emoji}
+              </span>
+              <div className="text-left min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-black bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full shadow-sm">
+                    NEW 스티커!
+                  </span>
+                  <span className="text-xs sm:text-sm font-black text-white truncate">
+                    {unlockedSticker.name}
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-200 mt-0.5 font-medium truncate">
+                  {unlockedSticker.description}
+                </p>
+              </div>
+            </div>
+            {onOpenStickerBook && (
+              <button
+                type="button"
+                onClick={onOpenStickerBook}
+                className="px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs shrink-0 shadow-md transition active:scale-95 cursor-pointer flex items-center gap-1"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>스티커북</span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* 상세 통계 카드 그리드 */}
         <div className="grid grid-cols-3 gap-2 bg-slate-800/80 rounded-2xl p-2.5 sm:p-3 border border-white/10 mb-5">
+
           <div className="flex flex-col items-center">
             <span className="text-[11px] text-slate-400 font-bold">총 점수</span>
             <span className="text-base sm:text-lg font-black text-amber-300">{gameState.score}점</span>

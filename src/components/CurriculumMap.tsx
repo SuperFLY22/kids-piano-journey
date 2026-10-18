@@ -3,8 +3,8 @@
  * 1~10단계 구불구불 이어지는 길 위에 배치된 스테이지 발판 및 잠금해제 시각화
  */
 
-import React from 'react';
-import { Lock, Star, Sparkles, Trophy, Award, RotateCcw } from 'lucide-react';
+import React, { useState } from 'react';
+import { Lock, Star, Sparkles, Trophy, Award, RotateCcw, AlertTriangle, BookOpen } from 'lucide-react';
 import { CurriculumLevel, LevelProgress } from '../types/curriculum';
 import { CURRICULUM_LEVELS } from '../utils/curriculumData';
 
@@ -12,14 +12,17 @@ interface CurriculumMapProps {
   progress: LevelProgress;
   onSelectLevel: (level: CurriculumLevel) => void;
   onResetProgress?: () => void;
+  onOpenStickerBook?: () => void;
 }
 
 export const CurriculumMap: React.FC<CurriculumMapProps> = ({
   progress,
   onSelectLevel,
   onResetProgress,
+  onOpenStickerBook,
 }) => {
   const { unlockedLevel, levelScores } = progress;
+  const [showConfirm, setShowConfirm] = useState<boolean>(false);
 
   // 전체 별 개수 및 클리어 스테이지 계산
   const totalStars = Object.values(levelScores).reduce((acc, curr) => acc + curr.stars, 0);
@@ -44,8 +47,20 @@ export const CurriculumMap: React.FC<CurriculumMapProps> = ({
           </div>
         </div>
 
-        {/* 진행도 뱃지 및 리셋 */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* 진행도 뱃지 및 스티커북 버튼 & 리셋 */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          {onOpenStickerBook && (
+            <button
+              type="button"
+              onClick={onOpenStickerBook}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-400 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition cursor-pointer"
+              title="지금까지 모은 스티커 확인"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>내 스티커북 📖</span>
+            </button>
+          )}
+
           <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-400/20 border border-amber-300/40 text-amber-200 text-xs font-black shadow-sm">
             <Star className="w-3.5 h-3.5 fill-current text-amber-300" />
             <span>{totalStars} / 30 별</span>
@@ -56,19 +71,45 @@ export const CurriculumMap: React.FC<CurriculumMapProps> = ({
             <span>{clearedCount} / 10 완료</span>
           </div>
 
+
           {onResetProgress && (
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm('모험 진행도를 처음(1단계)으로 초기화할까요?')) {
-                  onResetProgress();
-                }
-              }}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-rose-300 hover:bg-rose-950/40 border border-transparent hover:border-rose-400/30 transition text-xs cursor-pointer"
-              title="진행도 초기화"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
+            <>
+              {!showConfirm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/40 hover:border-rose-300 transition text-xs font-bold active:scale-95 cursor-pointer shadow-sm"
+                  title="모험 모드 진행도 초기화"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-rose-300" />
+                  <span>모험 초기화</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5 bg-rose-950/90 border border-rose-500/70 px-2.5 py-1 rounded-xl shadow-lg animate-fadeIn">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-300 shrink-0" />
+                  <span className="text-[11px] font-bold text-rose-200 whitespace-nowrap">
+                    1단계로 리셋할까요?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowConfirm(false);
+                      onResetProgress();
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-rose-500 hover:bg-rose-400 text-white font-black text-xs transition cursor-pointer active:scale-95"
+                  >
+                    확인
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(false)}
+                    className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 font-bold text-xs transition cursor-pointer"
+                  >
+                    취소
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

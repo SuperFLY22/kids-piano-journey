@@ -91,6 +91,21 @@
   - 모험 지도 <-> 오선보 연습 모드(Wait Mode) 완벽 스위칭 및 상단 [← 모험 지도로] 복귀 바
 - [x] 단위 테스트 구축 및 검증 완료 (`tests/curriculum.test.ts` 100% Green Pass, `npm run build` 통과)
 
+## Phase 9: Countdown, Speed Control & Sticker Album (Completed)
+- [x] 1. 연주 전 카운트다운 및 템포 조절 기능 (`src/hooks/useRhythmGame.ts`, UI)
+  - [x] 3초 시각 카운트다운 오버레이 ("3, 2, 1, 출발! 🚀") 및 틱 카운트 효과음 연출
+  - [x] 카운트다운 중 악보 스크롤 정지 유지 및 '출발!' 시점 타이머 가동
+  - [x] '거북이(0.75배속) / 토끼(1.0배속)' 템포 프리셋 토글 (`speed: 0.75 | 1.0`)
+  - [x] 선택 배속에 맞춘 `song.bpm` 및 캔버스 스크롤 속도(`PIXELS_PER_SECOND`) 부드러운 연동
+
+- [x] 2. 커리큘럼 및 완곡 연동 스티커북 수집 시스템 (`src/utils/stickerStorage.ts`, `src/components/StickerBookModal.tsx`)
+  - [x] 10개 레벨 및 동요별 고유 보상 스티커 메타데이터 정의 (15종 SSOT)
+  - [x] 별 2개 이상 클리어 시 스티커 해금 축하 팝업 (`SongCompletionModal` 연계)
+  - [x] 메인/모험 지도 내 [내 스티커북 📖] 버튼 및 통통 튀는 애니메이션 모달 구현
+  - [x] LocalStorage(`kids_piano_unlocked_stickers`) 영속화
+- [x] 3. 검증 및 테스트 가이드 (카운트다운, 거북이 모드, 스티커북 수집 유지 검증 완료)
+
+
 
 
 

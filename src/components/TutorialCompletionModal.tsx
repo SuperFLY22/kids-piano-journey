@@ -45,8 +45,8 @@ export const TutorialCompletionModal: React.FC<TutorialCompletionModalProps> = (
             참 잘했어요! 🏆
           </h2>
           <p className="text-sm text-slate-300 mt-1 leading-relaxed">
-            1번 엄지(도)부터 5번 새끼(솔)까지<br />
-            오른손 손가락 피아노 자리를 완벽하게 익혔어요!
+            1번 엄지(도)부터 높은 도(C5)까지<br />
+            1옥타브 피아노 건반과 손가락 자리를 완벽하게 익혔어요!
           </p>
         </div>
 

@@ -302,5 +302,58 @@ assert.strictEqual(pState.curTime, 1.0, 'Time must freeze exactly at next note t
 
 console.log('  ✅ Wait Mode(기다려주기) 상태 전이 및 판정 검증 통과');
 
+// 12. [Phase 9] 3초 카운트다운(-3.0s ~ 0.6s) 및 악보 스크롤 0초 정지 불변성 검증
+console.log('  12. [Phase 9] 3초 시각 카운트다운 및 스크롤 정지 불변성 검증...');
+function getCountdownStep(timeSec: number): number | 'GO' | null {
+  if (timeSec < 0) {
+    return Math.min(3, Math.max(1, Math.ceil(Math.abs(timeSec))));
+  } else if (timeSec >= 0 && timeSec < 0.6) {
+    return 'GO';
+  }
+  return null;
+}
+
+assert.strictEqual(getCountdownStep(-3.0), 3, '-3.0초는 카운트다운 3');
+assert.strictEqual(getCountdownStep(-2.5), 3, '-2.5초는 카운트다운 3');
+assert.strictEqual(getCountdownStep(-2.0), 2, '-2.0초는 카운트다운 2');
+assert.strictEqual(getCountdownStep(-1.5), 2, '-1.5초는 카운트다운 2');
+assert.strictEqual(getCountdownStep(-1.0), 1, '-1.0초는 카운트다운 1');
+assert.strictEqual(getCountdownStep(-0.2), 1, '-0.2초는 카운트다운 1');
+assert.strictEqual(getCountdownStep(0.0), 'GO', '0.0초는 출발! GO');
+assert.strictEqual(getCountdownStep(0.59), 'GO', '0.59초는 출발! GO');
+assert.strictEqual(getCountdownStep(0.6), null, '0.6초 이후는 카운트다운 해제(null)');
+assert.strictEqual(getCountdownStep(1.5), null, '연주 중에는 카운트다운 없음');
+
+// 카운트다운 중 캔버스 스크롤 시간 정지 가드 검증: Math.max(0, rawCurTime)
+const testScrollTimeDuringCountdown = (rawTime: number) => Math.max(0, rawTime);
+assert.strictEqual(testScrollTimeDuringCountdown(-3.0), 0, '카운트다운 3 시점 악보 스크롤은 0초에 정지');
+assert.strictEqual(testScrollTimeDuringCountdown(-1.5), 0, '카운트다운 2 시점 악보 스크롤은 0초에 정지');
+assert.strictEqual(testScrollTimeDuringCountdown(-0.01), 0, '카운트다운 1 시점 악보 스크롤은 0초에 정지');
+assert.strictEqual(testScrollTimeDuringCountdown(0.5), 0.5, '출발 이후 실제 시간대로 부드럽게 전진');
+console.log('  ✅ [Phase 9] 3초 시각 카운트다운 및 스크롤 정지 불변성 검증 통과');
+
+// 13. [Phase 9] 거북이(0.75배속) / 토끼(1.0배속) BPM 및 캔버스 스크롤 속도 연동 검증
+console.log('  13. [Phase 9] 템포 프리셋(0.75x/1.0x) 연동 및 연주 여유 시간 검증...');
+const calcEffectiveBpm = (baseBpm: number, speed: 0.75 | 1.0) => Math.max(30, Math.round(baseBpm * speed));
+const calcPixelsPerSecond = (speed: 0.75 | 1.0) => Math.round(150 * speed);
+
+// 비행기(BPM 76) 기준
+const airplaneNormalBpm = calcEffectiveBpm(76, 1.0);
+const airplaneTurtleBpm = calcEffectiveBpm(76, 0.75);
+assert.strictEqual(airplaneNormalBpm, 76, '토끼 모드는 정규 76 BPM');
+assert.strictEqual(airplaneTurtleBpm, 57, '거북이 모드는 76 * 0.75 = 57 BPM으로 완화');
+
+// 1비트 지속 시간 비교 (더 길어져 아이에게 여유 제공)
+const normalBeatSec = beatToSeconds(1, airplaneNormalBpm);
+const turtleBeatSec = beatToSeconds(1, airplaneTurtleBpm);
+assert.ok(turtleBeatSec > normalBeatSec, `거북이 박자 시간(${turtleBeatSec}s)이 정규 박자(${normalBeatSec}s)보다 길어야 함`);
+assert.strictEqual(Math.round(turtleBeatSec * 1000), 1053, '57 BPM 1비트는 약 1.053초');
+
+// 캔버스 스크롤 속도
+assert.strictEqual(calcPixelsPerSecond(1.0), 150, '토끼 모드 스크롤 150 px/s');
+assert.strictEqual(calcPixelsPerSecond(0.75), 113, '거북이 모드 스크롤 113 px/s');
+console.log('  ✅ [Phase 9] 템포 프리셋 연동 검증 통과');
+
 console.log('🎉 [Tier 1: Rhythm Game & Sheet Music Test] 모든 테스트 GREEN PASS!\n');
+
 

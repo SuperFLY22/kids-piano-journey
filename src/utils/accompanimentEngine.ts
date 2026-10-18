@@ -138,7 +138,7 @@ class AccompanimentEngine {
   }
 
   /**
-   * 시작 카운트다운 틱 (준비 중일 때 '딱, 딱, 딱, 딱' 경쾌한 메트로놈 틱)
+   * 시작 카운트다운 틱 (3, 2, 1 준비 틱 및 0: 출발! 스타트 사운드)
    */
   public playCountdownTick(count: number): void {
     if (this.isMuted) return;
@@ -152,29 +152,51 @@ class AccompanimentEngine {
       const gain = ctx.createGain();
 
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(count === 1 ? 1200 : 880, now);
-      osc.frequency.exponentialRampToValueAtTime(300, now + 0.05);
-
-      gain.gain.setValueAtTime(this.volume * 0.4, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.06);
+      if (count === 0) {
+        // 출발! 🚀 고음 스타트 팡파르 차임
+        osc.frequency.setValueAtTime(1046.5, now); // C6
+        osc.frequency.exponentialRampToValueAtTime(1567.98, now + 0.12); // G6로 상승
+        gain.gain.setValueAtTime(this.volume * 0.45, now);
+        gain.gain.linearRampToValueAtTime(0.001, now + 0.18);
+        osc.stop(now + 0.2);
+      } else if (count === 1) {
+        // 1 틱: 고음 1046Hz
+        osc.frequency.setValueAtTime(1046.5, now);
+        osc.frequency.exponentialRampToValueAtTime(400, now + 0.06);
+        gain.gain.setValueAtTime(this.volume * 0.4, now);
+        gain.gain.linearRampToValueAtTime(0.001, now + 0.07);
+        osc.stop(now + 0.08);
+      } else {
+        // 3, 2 틱: 880Hz 맑은 틱
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.exponentialRampToValueAtTime(350, now + 0.05);
+        gain.gain.setValueAtTime(this.volume * 0.4, now);
+        gain.gain.linearRampToValueAtTime(0.001, now + 0.06);
+        osc.stop(now + 0.07);
+      }
 
       const target = this.masterEqNode || ctx.destination;
       osc.connect(gain);
       gain.connect(target);
 
       osc.start(now);
-      osc.stop(now + 0.07);
     } catch {
       // 무시
     }
   }
 
+
   /**
    * 박자(Beat 0~31)에 따른 반주 한 박 재생 (쿵-짝-쿵-짝 패턴)
    * @param currentBeat 현재 곡의 박자 위치 (0부터 시작)
    * @param songId 곡 식별자 ('song-airplane' | 'song-butterfly' | 'song-twinkle' 등)
+   * @param customChords 곡 메타데이터에서 직접 주입된 코드 진행표 (SSOT 우선)
    */
-  public playBeat(currentBeat: number, songId: string = 'song-airplane'): void {
+  public playBeat(
+    currentBeat: number,
+    songId: string = 'song-airplane',
+    customChords?: Array<'C' | 'G7'>
+  ): void {
     if (this.isMuted || currentBeat < 0) return;
 
     try {
@@ -188,7 +210,8 @@ class AccompanimentEngine {
       // 10ms 안전 마진 부여
       const now = ctx.currentTime + 0.01;
 
-      const progression = CHORD_PROGRESSIONS[songId] || CHORD_PROGRESSIONS['song-airplane'];
+      // [SSOT 우선]: 곡 메타데이터에 등록된 코드 진행표 우선 참조
+      const progression = customChords || CHORD_PROGRESSIONS[songId] || CHORD_PROGRESSIONS['song-airplane'];
       const beatInMeasure = Math.floor(currentBeat) % 4; // 0, 1, 2, 3
       const measureIndex = Math.min(Math.floor(currentBeat / 4), progression.length - 1);
       const currentChordType = progression[measureIndex];

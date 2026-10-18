@@ -64,7 +64,7 @@ export const SongModeSoundMonitor: React.FC<SongModeSoundMonitorProps> = React.m
             }`}
           />
           <span className="text-[11px] font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-            실시간 소리 모니터
+            피아노 소리 감지기
           </span>
         </div>
 
@@ -80,12 +80,12 @@ export const SongModeSoundMonitor: React.FC<SongModeSoundMonitorProps> = React.m
             {isGateOpen ? (
               <>
                 <ShieldCheck className="w-2.5 h-2.5 text-emerald-400" />
-                <span>열림</span>
+                <span>인식 중</span>
               </>
             ) : (
               <>
                 <ShieldAlert className="w-2.5 h-2.5 text-slate-400" />
-                <span>닫힘</span>
+                <span>대기</span>
               </>
             )}
           </div>
@@ -129,8 +129,8 @@ export const SongModeSoundMonitor: React.FC<SongModeSoundMonitorProps> = React.m
               <Mic className="w-4 h-4 text-white/50 animate-pulse" />
             </div>
             <div className="leading-tight">
-              <p className="text-[11px] font-bold text-amber-300">피아노 건반 대기 중</p>
-              <p className="text-[9px] text-white/60">피아노를 치거나 마이크를 켜세요</p>
+              <p className="text-[11px] font-bold text-amber-300">건반을 퐁 눌러보세요 🎹</p>
+              <p className="text-[9px] text-white/60">마이크가 소리를 기다려요</p>
             </div>
           </div>
         ) : (
@@ -170,9 +170,9 @@ export const SongModeSoundMonitor: React.FC<SongModeSoundMonitorProps> = React.m
         <div className="flex items-center justify-between text-[10px] text-white/80 font-mono font-bold">
           <span className="flex items-center gap-1">
             <Volume2 className="w-3 h-3 text-cyan-300" />
-            <span>볼륨: {volumeDb}dB</span>
+            <span>마이크 크기: {volumeDb}dB</span>
           </span>
-          <span className="text-[9px] text-white/60">소음 차단 게이트</span>
+          <span className="text-[9px] text-white/60">주변 잡음 차단</span>
         </div>
 
         {/* 볼륨 게이지 바 */}
