@@ -48,7 +48,7 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
   const isPractice = gameState.playMode === 'practice';
 
   return (
-    <div className="w-full bg-white/[0.12] backdrop-blur-2xl border border-white/35 rounded-2xl sm:rounded-3xl p-2 sm:p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
+    <div className="w-full bg-slate-900/85 backdrop-blur-2xl border border-white/35 rounded-2xl sm:rounded-3xl p-2 sm:p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
       {/* 상단: 곡 정보 & 5곡 탭 & 컨트롤 버튼 & 점수 (단일 고밀도 행) */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         {/* 마스코트 & 곡 제목 & 5곡 빠른 전환 칩 & 모드 토글 */}
@@ -70,13 +70,13 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <h3 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5 leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] whitespace-nowrap">
+              <h3 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5 leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] whitespace-nowrap">
                 {song.title}
               </h3>
 
               {/* 곡 전환 탭 버튼 (동요 5곡 전곡 빠른 원터치 전환) */}
               {onSelectSong && (
-                <div className="flex items-center gap-1 bg-black/25 backdrop-blur-md p-0.5 rounded-xl border border-white/20 shadow-inner overflow-x-auto max-w-full scrollbar-none">
+                <div className="flex items-center gap-1 bg-black/45 backdrop-blur-md p-0.5 rounded-xl border border-white/25 shadow-inner overflow-x-auto max-w-full scrollbar-none">
                   {songList.map((s) => {
                     const isSelected = song.id === s.id;
                     const cleanTitle = s.title.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').replace('동요', '').trim();
@@ -89,7 +89,7 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
                         className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-black transition active:scale-95 cursor-pointer whitespace-nowrap shrink-0 ${
                           isSelected
                             ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-sm'
-                            : 'text-white/70 hover:text-white hover:bg-white/10'
+                            : 'text-white/90 hover:text-white hover:bg-white/20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]'
                         }`}
                       >
                         {label}
@@ -143,7 +143,7 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
               )}
             </div>
 
-            <p className="text-[10px] text-white/80 font-bold leading-tight truncate mt-0.5 max-w-[280px] sm:max-w-md drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+            <p className="text-[10px] text-amber-200 font-black leading-tight truncate mt-0.5 max-w-[280px] sm:max-w-md drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
               {gameState.isPlaying
                 ? gameState.currentTimeSec < 0
                   ? `🚀 출발 준비! (${gameState.countdown ?? Math.ceil(Math.abs(gameState.currentTimeSec))})`
@@ -162,14 +162,14 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
 
         {/* 현재 타깃 가이드 뱃지 */}
         {activeNote && (
-          <div className="hidden md:flex items-center gap-1.5 bg-black/25 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded-xl">
-            <span className="text-[10px] text-white/80 font-bold">타깃:</span>
+          <div className="hidden md:flex items-center gap-1.5 bg-black/45 backdrop-blur-md border border-white/30 px-2 py-0.5 rounded-xl">
+            <span className="text-[10px] text-amber-200 font-black drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">타깃:</span>
             <div
-              className="px-2 py-0.5 rounded-lg text-white font-black text-xs shadow-sm flex items-center gap-1"
+              className="px-2 py-0.5 rounded-lg text-white font-black text-xs shadow-sm flex items-center gap-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
               style={{ backgroundColor: activeNote.color }}
             >
               <span>{activeNote.solfege}</span>
-              <span className="text-[9px] bg-black/20 px-1 rounded">{activeNote.finger}번</span>
+              <span className="text-[9px] bg-black/30 px-1 rounded font-black">{activeNote.finger}번</span>
             </div>
           </div>
         )}
@@ -177,13 +177,13 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
         {/* 컨트롤러 & 점수 & MR 반주 토글 */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* 점수 & 콤보 */}
-          <div className="flex items-center gap-1.5 bg-black/25 backdrop-blur-md px-2 py-0.5 rounded-xl border border-white/20">
-            <div className="flex items-center gap-1 text-amber-300 font-bold text-xs drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+          <div className="flex items-center gap-1.5 bg-black/45 backdrop-blur-md px-2 py-0.5 rounded-xl border border-white/30">
+            <div className="flex items-center gap-1 text-amber-300 font-black text-xs drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
               <Trophy className="w-3 h-3" />
               <span>{gameState.score}</span>
             </div>
             {gameState.combo > 1 && (
-              <div className="flex items-center gap-0.5 text-orange-400 font-extrabold text-xs animate-pulse">
+              <div className="flex items-center gap-0.5 text-orange-400 font-black text-xs animate-pulse drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                 <Flame className="w-3 h-3" />
                 <span>{gameState.combo}연타!</span>
               </div>
@@ -195,10 +195,10 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
             <button
               type="button"
               onClick={onToggleMr}
-              className={`p-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1 transition active:scale-95 shadow-sm cursor-pointer backdrop-blur-md ${
+              className={`p-1.5 rounded-xl border text-[11px] font-black flex items-center gap-1 transition active:scale-95 shadow-sm cursor-pointer backdrop-blur-md drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] ${
                 !isMrMuted
-                  ? 'bg-sky-500/30 text-sky-200 border-sky-400/50 hover:bg-sky-500/40'
-                  : 'bg-black/25 text-white/70 border-white/20 hover:text-white'
+                  ? 'bg-sky-500/40 text-sky-200 border-sky-400/80 hover:bg-sky-500/50'
+                  : 'bg-black/45 text-white/90 border-white/30 hover:text-white'
               }`}
               title={!isMrMuted ? '배경 반주 켜짐 (클릭 시 끄기)' : '배경 반주 꺼짐 (클릭 시 켜기)'}
             >
@@ -209,7 +209,7 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
                 </>
               ) : (
                 <>
-                  <VolumeX className="w-3.5 h-3.5 text-white/50" />
+                  <VolumeX className="w-3.5 h-3.5 text-white/70" />
                   <span className="hidden lg:inline text-[10px]">반주 OFF</span>
                 </>
               )}
@@ -221,11 +221,11 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
             <button
               type="button"
               onClick={onOpenSoundMixer}
-              className="p-1.5 rounded-xl border border-white/20 bg-black/25 hover:bg-white/10 text-white/80 hover:text-white transition active:scale-95 shadow-sm cursor-pointer backdrop-blur-md flex items-center gap-1"
+              className="p-1.5 rounded-xl border border-white/30 bg-black/45 hover:bg-black/60 text-amber-200 hover:text-amber-100 transition active:scale-95 shadow-sm cursor-pointer backdrop-blur-md flex items-center gap-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] font-black"
               title="소리 크기 조절"
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-amber-300" />
-              <span className="hidden xl:inline text-[10px] font-bold">소리 크기</span>
+              <span className="hidden xl:inline text-[10px]">소리 크기</span>
             </button>
           )}
 
@@ -234,7 +234,7 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
             {!gameState.isPlaying ? (
               <button
                 onClick={gameState.isPaused ? (onResume || onPlay) : onPlay}
-                className="px-2.5 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-emerald-500/20 active:scale-95 transition cursor-pointer"
+                className="px-2.5 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-xs flex items-center gap-1 shadow-md shadow-emerald-500/20 active:scale-95 transition cursor-pointer drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
               >
                 <Play className="w-3 h-3 fill-current" />
                 <span>{gameState.isPaused ? '이어하기' : '시작'}</span>
@@ -242,7 +242,7 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
             ) : (
               <button
                 onClick={onPause}
-                className="px-2.5 py-1 sm:py-1.5 rounded-xl bg-black/30 hover:bg-black/40 border border-white/25 text-white font-bold text-xs flex items-center gap-1 shadow-sm active:scale-95 transition cursor-pointer backdrop-blur-md"
+                className="px-2.5 py-1 sm:py-1.5 rounded-xl bg-black/45 hover:bg-black/60 border border-white/35 text-white font-black text-xs flex items-center gap-1 shadow-sm active:scale-95 transition cursor-pointer backdrop-blur-md drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
               >
                 <Pause className="w-3 h-3 fill-current" />
                 <span>일시정지</span>
@@ -251,7 +251,7 @@ export const SongPlayHeader: React.FC<SongPlayHeaderProps> = React.memo(({
 
             <button
               onClick={onRestart}
-              className="p-1 sm:p-1.5 rounded-xl bg-black/25 hover:bg-black/40 border border-white/25 text-white transition active:scale-95 shadow-sm cursor-pointer backdrop-blur-md"
+              className="p-1 sm:p-1.5 rounded-xl bg-black/45 hover:bg-black/60 border border-white/35 text-white transition active:scale-95 shadow-sm cursor-pointer backdrop-blur-md drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
               title="처음부터 다시 연주"
             >
               <RotateCcw className="w-3 h-3" />

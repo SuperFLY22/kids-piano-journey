@@ -49,13 +49,12 @@ Piano_start/
 │   │   ├── PitchCard.tsx           # 현재 감지된 음표의 대형 시각화 카드 (무지개 글로우, 센트 튜너 바)
 │   │   ├── NoiseGateControl.tsx    # [UI] 실시간 볼륨 미터 및 노이즈 게이트(Threshold) 상시 조절 컨트롤러
 │   │   ├── VirtualPiano.tsx        # [Phase 2 & 3 & 4] 3D 건반 (타깃 펄스 안내 '눌러요!' 포인터 및 네온 발광)
-│   │   ├── PianoRangeTester.tsx    # 가온 C 구역(C4~G4) 실시간 주파수 대조 그리드
 │   │   ├── HandGuideGraphic.tsx    # [Phase 3] 생성된 3D 아기 손(장갑) 마스코트(`hand_guide_mascot.png`) 기반 실시간 손가락 번호·음표 인터랙티브 가이드
-│   │   ├── TutorialGuide.tsx       # [Phase 3] 손가락 연습 5단계 진행도 별, 타깃 음표 카드, 손가락 가이드, 힌트 배너, 마스코트 가이드
-│   │   ├── TutorialCompletionModal.tsx # [Phase 3] 5단계 올클리어 트로피(고화질 에셋) 축하 모달
+│   │   ├── TutorialGuide.tsx       # [Phase 3] 손가락 연습 8단계 진행도 별, 타깃 음표 카드, 손가락 가이드, 힌트 배너, 마스코트 가이드
+│   │   ├── TutorialCompletionModal.tsx # [Phase 3] 8단계 올클리어 트로피(고화질 에셋) 축하 모달
 │   │   ├── SheetMusicCanvas.tsx    # [Phase 4 & 9] HTML5 Canvas 60fps 가로 스크롤 높은음자리표 오선보 & 무지개 음표 & 타깃선 & 파티클 & 템포 배속(0.75x/1.0x) 연동
-│   │   ├── SongPlayHeader.tsx      # [Phase 4 & 9] 동요 리듬 게임 상단 헤더 (곡 정보, 콤보/점수 배지, 재생 컨트롤러, 거북이/토끼 속도 토글)
-│   │   ├── SongSelectionCardList.tsx # [Phase 7] 알록달록 동요 5곡 가로 슬라이더 카드 리스트 (접이식 아코디언 토글 탑재)
+│   │   ├── SongPlayHeader.tsx      # [Phase 4 & 9] 동요 리듬 게임 상단 헤더 (곡 정보, 5곡 탭, 콤보/점수 배지, 재생 컨트롤러, 거북이/토끼 속도 토글, 고대비 텍스트)
+│   │   ├── SongSelectionCardList.tsx # [Phase 7] 알록달록 동요 5곡 가로 슬라이더 카드 리스트 (접이식 아코디언 토글 탑재, 고대비 텍스트)
 │   │   ├── SongModeSoundMonitor.tsx # [Tablet Pad Standard] 연주 모드 전용 통합 사운드 모니터 (PitchCard + NoiseGate 일체형 패널)
 │   │   ├── CurriculumMap.tsx       # [Phase 8 & 9] 10단계 구불구불 모험 길, 스테이지 발판, 자물쇠 잠금, 별점 및 스티커북 진입 버튼
 │   │   ├── LevelIntroModal.tsx     # [Phase 8 & 9] 스테이지별 손가락 팁, 연주 팁, 템포 배속 토글 및 Wait Mode 진입 모달
@@ -145,7 +144,14 @@ graph TD
         P --> Q["PitchMonitor & AudioLogViewer"]
     end
 
-    subgraph "Phase 4 가로 스크롤 오선보 & 리듬 게임 파이프라인"
+    subgraph "Phase 4 & 9 가로 스크롤 오선보 & 카운트다운 & 리듬 게임 파이프라인"
+        ST["시작/재시작 트리거"] --> CD["3초 시각 카운트다운 (-3.0s ~ 0s)"]
+        CD --> CDT["accompaniment.playCountdownTick(3, 2, 1, 0:출발!)"]
+        CD --> CDO["CountdownOverlay (3, 2, 1, 출발! 🚀 팝업)"]
+        CD --> SCR0["악보 스크롤 0초 고정 (타깃 타건 방어)"]
+        CD -->|0초 도달| RG_PLAY["본 연주 개시 (timeRef.current >= 0)"]
+        SPD["템포 프리셋 (거북이 0.75x / 토끼 1.0x)"] --> BPM["effectiveBpm & PIXELS_PER_SECOND 스케일링"]
+        BPM --> RG_PLAY
         M --> RG["useRhythmGame : handleNoteInput(pitch)"]
         KB["Mac 키보드 시뮬레이션"] --> RG
         RG --> TN{"Active Target Note 일치 및 타이밍 윈도우(±0.38s)?"}
@@ -159,10 +165,15 @@ graph TD
         ED -- Yes --> FN["soundEffects.playFanfare() & SongCompletionModal"]
     end
 
-    subgraph "Phase 3 튜토리얼 인터랙티브 루프"
-        M --> R["useFingerTutorial : handleNoteInput()"]
-        R --> S{"isNoteMatchingStep() ?"}
-        S -- Yes --> T["soundEffects.playSuccessDing() (맑은 딩동댕)"]
+    subgraph "Phase 9 스티커북 수집 및 보상 파이프라인"
+        FN --> EV{"완곡 평가: 별 2개 이상(stars >= 2) ?"}
+        EV -- Yes --> STK_CHK["checkAndUnlockLevelSticker / checkAndUnlockSongSticker"]
+        STK_CHK --> STK_SV["saveUnlockedStickers (LocalStorage 영속화)"]
+        STK_SV --> STK_POP["SongCompletionModal : 신규 스티커 축하 배너 팝업"]
+        STK_POP --> SBM["StickerBookModal : 15종 앨범 그리드 해금 & 차임벨 연출"]
+        HDR_BTN["상단 바 / 모험 지도 [내 스티커북 📖]"] --> SBM
+    end
+
     subgraph "Phase 3 튜토리얼 인터랙티브 루프"
         M --> R["useFingerTutorial : handleNoteInput()"]
         R --> S{"isNoteMatchingStep() ?"}
@@ -184,19 +195,23 @@ graph TD
 | `src/types/tutorial.ts` | **Domain Models** | [Phase 3 & Refactor] `TutorialStep`, `TutorialState` 튜토리얼 모델 명세 (C4~C5 8단계) |
 | `src/types/sheet.ts` | **Domain Models** | [Phase 4, 6 & 7] `SheetNote`, `SongMetadata`(난이도, 설명, 아이콘 확장), `RhythmGameState`, `HitRating`, `RhythmPlayMode`('practice' | 'play'), `NotePitch`(C4~C5 확장) |
 | `src/types/curriculum.ts` | **Domain Models** | [Phase 8] `CurriculumLevel`, `LevelProgress`, `LevelScoreRecord` 10단계 모험 커리큘럼 도메인 명세 |
+| `src/types/sticker.ts` | **Domain Models** | [Phase 9] `RewardSticker`, `StickerCategory`('curriculum' | 'song'), `StickerBookProgress` 스티커북 모델 명세 |
 | `src/utils/audioMath.ts` | **Pure Business Logic** | • `frequencyToMidi`: 주파수->MIDI 계산(캘리브레이션 `baseA4` 지원)<br>• `calculateRmsAndDb`: Float32 버퍼 RMS/dBFS 산출<br>• `detectPianoPitch`: Min-Tau Guard 피아노 80Hz~2200Hz YIN 추출 및 3옥타브 저음 2차 배음 역보정기<br>• `frequencyToNoteInfo`: C3~C7(MIDI 48~96, 6옥타브) 확장 매핑 및 캘리브레이션 오프셋 옥타브 전파<br>• `detectNoteOnset`: [Phase 6] 30~50ms RMS 급상승(Attack Spike) Onset 감지기 (서스테인 잔향 중 동음 연타 분리)<br>• `CORE_PIANO_KEYS`: 1옥타브(C4~C5 8건반) SSOT 메타데이터 및 `frequency`<br>• `getCoreKeyNoteInfo`: 표준 NoteInfo 생성기 |
 | `src/utils/tutorialData.ts` | **Pure Business Logic** | [Phase 3 & Refactor] C4(도)~C5(높은도) 8단계 손가락 매핑 데이터 및 `isNoteMatchingStep` 순수 판정 함수 |
 | `src/utils/songParser.ts` | **Pure Business Logic** | [Phase 7 & Post-Phase 7] 간이 텍스트/JSON 악보 파서 (`createSong`: 음이름+박자 튜플 배열 -> 비트 누적, 손가락 번호, 붐웨커 컬러, 마디 수 자동 연산, [Post-Phase 7] C4~C5 1옥타브 손가락 기본값 표준화) |
 | `src/utils/songData.ts` | **Pure Business Logic** | [Phase 4 & 7] 동요 5곡(비행기, 나비야, 작은별, 곰세마리, 환희의송가) 악보 데이터, 곡 카탈로그(`SONG_CATALOG`), 박자<->초 변환, 오선보 C4~C5 Y좌표 계산 및 타이밍 판정 순수 헬퍼 |
 | `src/utils/curriculumData.ts` | **Pure Business Logic** | [Phase 8] 10단계 모험 커리큘럼 악보 및 손가락 위치 팁(`handTip`), 구어체 연주 팁(`playTip`) 데이터베이스 (`CURRICULUM_LEVELS`, `getCurriculumLevel`) |
 | `src/utils/curriculumStorage.ts` | **Persistence Service** | [Phase 8] 커리큘럼 진행도(`kids_piano_curriculum_progress`) 로드/저장/리셋 유틸리티 (70% 정답률 달성 시 다음 레벨 자동 해금, 최고 점수/별점 불변성 보존) |
+| `src/utils/stickerStorage.ts` | **Persistence Service** | [Phase 9] 15종 스티커(10개 레벨 + 5곡 동요) 마스터 데이터(`STICKER_CATALOG`), 별 2개 이상 해금 검사(`checkAndUnlockLevelSticker`, `checkAndUnlockSongSticker`), LocalStorage(`kids_piano_unlocked_stickers`) 영속화 및 리셋 |
 | `src/utils/audioContextManager.ts` | **Audio Core Manager** | [Phase 4 & Post-Phase 7] 전역 단일 AudioContext 공유 싱글톤 매니저 (브라우저 다중 컨텍스트 한도 초과 및 서스펜드 원천 차단, 마이크 분석 전용 컨텍스트 `getOrCreateMicContext` / `closeMicContext` 통합 관리) |
-| `src/utils/accompanimentEngine.ts` | **Audio Synthesis** | [Phase 4, 7 & Post-Phase 7] Web Audio API 동요 반주(MR) 엔진 (베이스·화음 옥타브 배음 합성, [Phase 7] 피아노 C4~G4 기음 대역 크로스토크 오인식을 원천 방지하는 마스터 Peaking/Notch EQ 버스(-18dB 감쇠), `stop()` 즉각 잔향 차단 API, 5곡 전곡 코드 진행표 및 LocalStorage 볼륨/음소거 영속화) |
+| `src/utils/accompanimentEngine.ts` | **Audio Synthesis** | [Phase 4, 7 & 9] Web Audio API 동요 반주(MR) 엔진 (베이스·화음 옥타브 배음 합성, [Phase 7] 피아노 C4~G4 기음 간섭 방지 마스터 EQ 버스(-18dB), [Phase 9] 3초 카운트다운 틱 사운드(`playCountdownTick`), `stop()` 즉각 잔향 차단 API, 5곡 전곡 코드 진행표 및 LocalStorage 볼륨/음소거 영속화) |
 | `src/utils/soundEffects.ts` | **Audio Synthesis** | [Phase 3 & 7] Web Audio API 오실레이터 합성 (맑은 딩동댕 차임 및 축하 팡파르, MR 대비 귀를 찌르지 않는 마스터 볼륨 0.5 밸런스 튜닝, 볼륨/음소거 제어 및 LocalStorage 영속화) |
 | `src/hooks/usePitchDetection.ts` | **Audio Engine** | • 브라우저 네이티브 AudioContext 수명주기를 `audioContextManager.getOrCreateMicContext`로 전역 싱글톤 통합 관리<br>• `yinThreshold`/`bufferSize` 원시값 추출을 통한 `useCallback` 참조 불변성 보장<br>• `cleanupAudio` 시 전역 오디오 컨텍스트 suspended 자동 복구 가드<br>• `getUserMedia` 하드웨어 AEC 및 노이즈 억제 활성화<br>• [Phase 7] HPF(80Hz, 터치/바람 럼블 컷) + Notch(1800Hz, 반주 틱 대역 저지) + LPF(2200Hz, 초고주파 컷) 3단 BiquadFilter 파이프라인으로 반주 크로스토크 원천 차단 및 순도 향상<br>• C3~C7 전 음역 실시간 시뮬레이션 지원<br>• `useRef` 격리 기반 슬라이딩 윈도우 피치 큐 & Fast Attack 음표 확정<br>• [Phase 6] `detectNoteOnset` 결합: 동음 연타(미-미-미) 시 80ms 쿨다운 기반 Attack Spike Onset 분리 및 `onNoteDetected` 개별 재발생 |
 | `src/hooks/useKeyboardSimulation.ts` | **Input Adapter** | • Mac 키보드 물리키(`KeyA`~`KeyK`, `Digit1`~`8`) 및 한글 두벌식 키(ㅁ, ㄴ, ㅇ, ㄹ, ㅎ, ㅗ, ㅓ, ㅏ) C4~C5 1옥타브 전역 수신 및 디바운싱 |
 | `src/hooks/useFingerTutorial.ts` | **Tutorial Engine** | [Phase 3 & Refactor] 튜토리얼 0~7단계 상태 머신, 타깃 판정, 사운드/별가루 락 제어, 단계 자동 전진 (레이스 컨디션 차단 타이머, 안정적 `handleNoteInput`, `stopTutorial` 시 `isCompleted` 완전 초기화) |
-| `src/hooks/useRhythmGame.ts` | **Rhythm Game Engine** | [Phase 4, 6 & Post-Phase 7] 동요 리듬 게임 엔진 (`useMemo` 기반 곡 재생시간 파생값 메모이제이션, 60fps 시간 스트림을 React State와 분리하여 timeRef 직결, UI 100ms 스로틀 갱신, 실시간 판정, 모든 노트 판정 완료 시 +0.8초 즉시 완곡 처리 가드, `pauseGame`/`stopGame` 시 MR 반주 `accompaniment.stop()` 즉각 정지 연동, [Phase 6] '연습(기다려주기)' vs '실전(리듬)' 듀얼 모드) |
+| `src/hooks/useRhythmGame.ts` | **Rhythm Game Engine** | [Phase 4, 6 & 9] 동요 리듬 게임 엔진 (`useMemo` 기반 곡 재생시간/effectiveBpm 메모이제이션, 60fps 시간 스트림을 React State와 분리하여 timeRef 직결, [Phase 9] -3.0s 시각 카운트다운 및 스크롤 정지 가드, 템포 배속(0.75x/1.0x) 연동, UI 100ms 스로틀 갱신, 실시간 판정, 모든 노트 판정 완료 시 완곡 가드, [Phase 6] '연습(기다려주기)' vs '실전(리듬)' 듀얼 모드) |
+| `src/components/CountdownOverlay.tsx` | **Visual FX** | [Phase 9] 3, 2, 1, 출발! 🚀 3초 카운트다운 네온 펄스 오버레이 (`React.memo` 렌더 최적화, 스크롤 정지 연계) |
+| `src/components/StickerBookModal.tsx` | **Modal View** | [Phase 9] 15종(10개 레벨 + 5곡 동요) 스티커 수집 앨범 그리드 및 해금 애니메이션 모달 (`useMemo` LocalStorage 캐싱, 신규 스티커 자동 포커싱, 터치 시 딩동댕 차임벨 연출) |
 | `src/components/CurriculumMap.tsx` | **Curriculum Map View** | [Phase 8 & Refactor] 10단계 구불구불 모험 길, 알록달록 스테이지 발판(1~10), 자물쇠 오버레이, 획득 별점(★ 1~3개), 펄스 하이라이트, 전체 진척도 통계 뷰 및 2단계 인라인 모험 초기화(`onResetProgress`) 리셋 UI |
 | `src/components/LevelIntroModal.tsx` | **Curriculum Modal** | [Phase 8] 스테이지별 손가락 위치 팁, 선생님 연주 팁, 붐웨커 목표 음표 색상 안내 및 [연습 시작하기 (Wait Mode)] 1클릭 진입 모달 |
 | `src/components/SongSelectionCardList.tsx` | **Selection View** | [Phase 7 & Tablet Pad Standard] 알록달록 동요 5곡 가로 슬라이더 카드 리스트 (태블릿 세로 공간 140px 확보를 위한 아코디언 접기/펼치기 토글 탑재, '동요 앨범 (5곡)' / '곡 목록 닫기/다른 곡 골라보기' 직관적 UX) |
@@ -216,6 +231,10 @@ graph TD
 | `src/components/PianoRangeTester.tsx` | **Verification View** | • [Deprecated] 초기 프로토타입 1옥타브 인식 그리드 (App.tsx UI에서 제거 및 VirtualPiano로 일원화) |
 | `src/components/PitchMonitor.tsx` | **Debug Control** | • 실시간 RMS dB 레벨 미터, 노이즈 게이트 슬라이더 조절, C4~C5 8음 키보드 시뮬레이터 |
 | `src/components/AudioLogViewer.tsx` | **Diagnostic Tool** | • 실시간 오디오 이벤트(타임스탬프, dB, Hz, 음이름) 스트림 표시 및 원클릭 복사 |
+| `src/views/AdventureModeView.tsx` | **Mode View** | [Phase 8] 10단계 모험 커리큘럼 뷰 (모험 지도 뷰 및 스테이지 연주 분기, 스티커북 진입 바 연동) |
+| `src/views/SongPlayModeView.tsx` | **Mode View** | [Phase 4 & 7] 동요 5곡 자유 연주 뷰 (5곡 슬라이더, 리듬 헤더, 오선보 캔버스, 가상 건반 통합) |
+| `src/views/TutorialModeView.tsx` | **Mode View** | [Phase 3] 오른손 5손가락 자리 튜토리얼 뷰 (손가락 가이드, 타깃 음표 카드, 가상 건반 연동) |
+| `src/views/FreePlayModeView.tsx` | **Mode View** | 자유 건반 연주 뷰 (3D 가상 건반 및 사운드 모니터) |
 | `src/App.tsx` | **Application Orchestrator** | • 태블릿 가로/데스크톱 2-Column Responsive Dashboard 오케스트레이션<br>• [모험 모드 🗺️], [동요 자유 연주 🎵], [손가락 연습 🖐️], [자유 연주 🎹] 4대 모드 간 실시간 스위칭<br>• [Post-Phase 7] SoundMixerModal 단일화 및 playModeRef 기반 음표 연동 격리 |
 
 ## 4. Refactoring & Test Shield Status (Completed)

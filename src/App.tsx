@@ -357,14 +357,14 @@ export const App: React.FC = () => {
         </div>
 
         {/* 4대 모드 선택 탭 */}
-        <div className="flex items-center bg-black/25 backdrop-blur-md p-1 rounded-2xl border border-white/20 shadow-inner">
+        <div className="flex items-center bg-black/40 backdrop-blur-md p-1 rounded-2xl border border-white/30 shadow-inner">
           <button
             type="button"
             onClick={() => handleSwitchMode('curriculum')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
               playMode === 'curriculum'
-                ? 'bg-gradient-to-r from-amber-400 to-yellow-400 text-slate-950 font-black shadow-md'
-                : 'text-white/80 hover:text-white hover:bg-white/10'
+                ? 'bg-gradient-to-r from-amber-400 to-yellow-400 text-slate-950 shadow-md'
+                : 'text-white/90 hover:text-white hover:bg-white/15 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]'
             }`}
           >
             <MapIcon className="w-3.5 h-3.5" />
@@ -374,10 +374,10 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => handleSwitchMode('song')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
               playMode === 'song'
                 ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-md'
-                : 'text-white/80 hover:text-white hover:bg-white/10'
+                : 'text-white/90 hover:text-white hover:bg-white/15 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]'
             }`}
           >
             <Music className="w-3.5 h-3.5" />
@@ -387,10 +387,10 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => handleSwitchMode('tutorial')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
               playMode === 'tutorial'
-                ? 'bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black shadow-md'
-                : 'text-white/80 hover:text-white hover:bg-white/10'
+                ? 'bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 shadow-md'
+                : 'text-white/90 hover:text-white hover:bg-white/15 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]'
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
@@ -400,10 +400,10 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => handleSwitchMode('free')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
               playMode === 'free'
-                ? 'bg-cyan-500 text-slate-950 font-black shadow-md'
-                : 'text-white/80 hover:text-white hover:bg-white/10'
+                ? 'bg-cyan-500 text-slate-950 shadow-md'
+                : 'text-white/90 hover:text-white hover:bg-white/15 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]'
             }`}
           >
             <Activity className="w-3.5 h-3.5" />
@@ -416,7 +416,7 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowStickerBookModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-black rounded-2xl transition-all border cursor-pointer active:scale-95 backdrop-blur-md shadow-sm bg-gradient-to-r from-amber-500/25 to-yellow-500/25 hover:from-amber-500/35 hover:to-yellow-500/35 text-amber-200 border-amber-300/50"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-black rounded-2xl transition-all border cursor-pointer active:scale-95 backdrop-blur-md shadow-sm bg-amber-950/45 hover:bg-amber-900/55 text-amber-300 border-amber-300/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
             title="내가 모은 피아노 스티커북 열기"
           >
             <BookOpen className="w-3.5 h-3.5 text-amber-300" />
@@ -426,7 +426,7 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowSoundMixerModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-2xl transition-all border cursor-pointer active:scale-95 backdrop-blur-md shadow-sm bg-white/[0.12] hover:bg-white/[0.22] text-white border-white/25"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-black rounded-2xl transition-all border cursor-pointer active:scale-95 backdrop-blur-md shadow-sm bg-black/40 hover:bg-black/60 text-white border-white/35 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
             title="배경 반주(MR) 및 효과음 볼륨 조절"
           >
             <Volume2 className="w-3.5 h-3.5 text-sky-300" />
@@ -436,14 +436,14 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowCalibrationModal(true)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-2xl transition-all border cursor-pointer active:scale-95 backdrop-blur-md shadow-sm ${
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-black rounded-2xl transition-all border cursor-pointer active:scale-95 backdrop-blur-md shadow-sm drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] ${
               calibrationProfile?.isCustom
-                ? 'bg-amber-400/30 text-amber-200 border-amber-400/60 shadow-amber-950/20'
-                : 'bg-white/[0.12] hover:bg-white/[0.22] text-white border-white/25'
+                ? 'bg-amber-950/50 text-amber-300 border-amber-400/80 shadow-amber-950/30'
+                : 'bg-black/40 hover:bg-black/60 text-white border-white/35'
             }`}
             title="사용자 피아노 8음 맞춤 주파수 캘리브레이션"
           >
-            <Sliders className={`w-3.5 h-3.5 ${calibrationProfile?.isCustom ? 'text-amber-300' : 'text-white/80'}`} />
+            <Sliders className={`w-3.5 h-3.5 ${calibrationProfile?.isCustom ? 'text-amber-300' : 'text-amber-200'}`} />
             <span className="hidden sm:inline">
               {calibrationProfile?.isCustom ? '조율 완료 ✨' : '건반 맞추기'}
             </span>
@@ -452,14 +452,14 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowDebug((prev) => !prev)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-2xl transition-all border cursor-pointer active:scale-95 backdrop-blur-md shadow-sm ${
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-black rounded-2xl transition-all border cursor-pointer active:scale-95 backdrop-blur-md shadow-sm drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] ${
               showDebug
-                ? 'bg-cyan-500/30 text-cyan-200 border-cyan-400/60 shadow-cyan-950/20'
-                : 'bg-white/[0.12] hover:bg-white/[0.22] text-white border-white/25'
+                ? 'bg-cyan-950/50 text-cyan-300 border-cyan-400/80 shadow-cyan-950/30'
+                : 'bg-black/40 hover:bg-black/60 text-white border-white/35'
             }`}
             title="상세 오디오 분석 및 실시간 로그 드로어 열기"
           >
-            <Activity className={`w-3.5 h-3.5 ${showDebug ? 'text-cyan-300 animate-pulse' : 'text-white/80'}`} />
+            <Activity className={`w-3.5 h-3.5 ${showDebug ? 'text-cyan-300 animate-pulse' : 'text-cyan-200'}`} />
             <span className="hidden sm:inline">{showDebug ? '분석 닫기' : '소리 분석'}</span>
           </button>
 
@@ -467,10 +467,10 @@ export const App: React.FC = () => {
             type="button"
             onClick={isListening ? stopListening : startListening}
             disabled={isInitializing}
-            className={`min-h-[40px] px-3.5 sm:px-5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-lg active:scale-95 cursor-pointer ${
+            className={`min-h-[40px] px-3.5 sm:px-5 rounded-xl font-black text-xs sm:text-sm flex items-center gap-2 transition-all shadow-lg active:scale-95 cursor-pointer drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] ${
               isListening
-                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/30'
-                : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-950/40'
+                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/40'
+                : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-950/50'
             }`}
           >
             {isInitializing ? (

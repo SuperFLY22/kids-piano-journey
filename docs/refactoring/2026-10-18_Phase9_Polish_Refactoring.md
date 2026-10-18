@@ -57,21 +57,21 @@
 
 ## 4. Mandatory Refactoring Checklist
 
-- [ ] **Step 1: Baseline Protection Check**
-  - [ ] `npm test` 실행하여 8개 테스트 스위트 100% 초록불(Pass) 확인
-- [ ] **Step 2: `StickerBookModal.tsx` 리팩토링**
-  - [ ] `newlyUnlockedSticker?: RewardSticker | null;` 및 `onDismissNewSticker?: () => void;` Props 정의
-  - [ ] `useMemo` 기반 `loadUnlockedStickers()` 캐싱
-  - [ ] `bounceTimerRef` 도입 및 `useEffect` 언마운트 클린업
-  - [ ] `newlyUnlockedSticker` 존재 시 초기 프리뷰 & 바운스 자동 포커싱
-- [ ] **Step 3: `useRhythmGame.ts` 카운트다운 스케줄링 일원화**
-  - [ ] 수동 틱 호출 정리 및 루프 단일 진입 경로 정돈
-- [ ] **Step 4: `CountdownOverlay.tsx` 최적화**
-  - [ ] `React.memo` 래핑 적용
-- [ ] **Step 5: `CODEMAP.md` Mandatory Sync**
-  - [ ] Mermaid 데이터 흐름도에 Phase 9 카운트다운 및 스티커북 수집 파이프라인 추가
-- [ ] **Step 6: 회귀 검증 및 빌드 테스트**
-  - [ ] `npm test` 8개 테스트 스위트 100% Green 확인
-  - [ ] `npm run build` 빌드 성공 확인
-- [ ] **Step 7: Post-Audit Checklist 재검증**
-  - [ ] 본 계획서의 모든 체크박스(`- [ ]`) 전수 검증 후 `- [x]` 갱신
+- [x] **Step 1: Baseline Protection Check**
+  - [x] `npm test` 실행하여 8개 테스트 스위트 100% 초록불(Pass) 확인
+- [x] **Step 2: `StickerBookModal.tsx` 리팩토링**
+  - [x] `newlyUnlockedSticker?: RewardSticker | null;` 및 `onDismissNewSticker?: () => void;` Props 정의
+  - [x] `useMemo` 기반 `loadUnlockedStickers()` 캐싱
+  - [x] `bounceTimerRef` 도입 및 `useEffect` 언마운트 클린업
+  - [x] `newlyUnlockedSticker` 존재 시 초기 프리뷰 & 바운스 자동 포커싱
+- [x] **Step 3: `useRhythmGame.ts` 카운트다운 스케줄링 일원화**
+  - [x] 수동 틱 호출 정리 및 루프 단일 진입 경로 정돈
+- [x] **Step 4: `CountdownOverlay.tsx` 최적화**
+  - [x] `React.memo` 래핑 적용
+- [x] **Step 5: `CODEMAP.md` Mandatory Sync**
+  - [x] Mermaid 데이터 흐름도에 Phase 9 카운트다운 및 스티커북 수집 파이프라인 추가
+- [x] **Step 6: 회귀 검증 및 빌드 테스트**
+  - [x] `npm test` 8개 테스트 스위트 100% Green 확인
+  - [x] `npm run build` 빌드 성공 확인
+- [x] **Step 7: Post-Audit Checklist 재검증**
+  - [x] 본 계획서의 모든 체크박스(`- [ ]`) 전수 검증 후 `- [x]` 갱신
