@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">키즈 피아노 저니</string>
+    <string name="title_activity_main">키즈 피아노 저니</string>
+    <string name="package_name">com.superfly.kidspianojourney</string>
+    <string name="custom_url_scheme">com.superfly.kidspianojourney</string>
+</resources>
